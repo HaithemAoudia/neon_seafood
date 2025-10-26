@@ -54,9 +54,6 @@ if authentication_status:
         initial_sidebar_state="collapsed"
     )
 
-    # ========== API CREDENTIALS ==========
-    API_EMAIL = "api_168175_0f76@api.oneup.com"  # Replace with your API email
-    API_KEY = "4c279b0a1b2c29df9852e29095d0bcb38eac901f"  # Replace with your API key
 
     # ========== CUSTOM CSS ==========
     st.markdown("""
@@ -1013,4 +1010,5 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
+
             st.info("No invoices found matching the selected filters")
