@@ -298,7 +298,7 @@ if authentication_status:
         creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
-        sheet_id = "1E59oS6DXSHIs1GfyZeE2q8WeoUbfxCk_O-ZK0A04NcM"
+        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         
         df_sales = pd.DataFrame(workbook.worksheet("OneUp - Invoices").get_all_records()).drop_duplicates()
@@ -477,10 +477,10 @@ if authentication_status:
     # ========= INVENTORY FUNCTIONS ============
     def get_product_inventory(product_name:str):
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_file("google_sheets_credentials.json", scopes=scope)
+        creds = Credentials.from_service_account_infor(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
-        sheet_id = "1E59oS6DXSHIs1GfyZeE2q8WeoUbfxCk_O-ZK0A04NcM"
+        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         
@@ -493,14 +493,13 @@ if authentication_status:
 
     #Update Inventory value for a given product name
     scope = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_file("google_sheets_credentials.json", scopes=scope)
+    creds = Credentials.from_service_account_info(google_cred, scopes=scope)
     client = gspread.authorize(creds)
 
-    sheet_id = "1E59oS6DXSHIs1GfyZeE2q8WeoUbfxCk_O-ZK0A04NcM"
-    workbook = client.open_by_key(sheet_id)
+
 
     def update_product_inventory(new_df):
-        sheet_id = "1E59oS6DXSHIs1GfyZeE2q8WeoUbfxCk_O-ZK0A04NcM"
+        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         set_with_dataframe(sheet, new_df)
