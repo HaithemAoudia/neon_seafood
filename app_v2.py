@@ -379,7 +379,7 @@ if authentication_status:
         return df_sales_order_merged, df_invoices, df_product_sales_merged, df_product
 
     # Load data
-    with st.spinner("Loading data..."):
+    with st.spinner("Setting Up Your Environment..."):
         df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory  = load_data()
         df_sales_order_merged, df_invoices, df_product_sales_merged, df_product_clean = prepare_data(
             df_sales, df_product, df_transactions_sumup
@@ -1177,6 +1177,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
