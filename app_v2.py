@@ -69,6 +69,7 @@ if authentication_status:
   "project_id": st.secrets["project_id"],
   "private_key_id": st.secrets["private_key_id"],
   "private_key": st.secrets["private_key"],
+  "client_email": st.secrets["client_email"],
   "client_id": st.secrets["client_id"],
   "auth_uri": st.secrets["auth_uri"],
   "token_uri": st.secrets["token_uri"],
@@ -1178,3 +1179,4 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
