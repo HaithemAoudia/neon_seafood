@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
@@ -18,6 +19,9 @@ import plotly.express as px
 import streamlit_authenticator as stauth
 import pickle
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 names = ["Chems"]
@@ -46,97 +50,196 @@ if authentication_status is None:
 
 if authentication_status:
 
-    # ========== PAGE CONFIG ==========
+# ========== PAGE CONFIG ==========
     st.set_page_config(
-        page_title="Neon Seafood Analytics",
-        page_icon="📊",
+        page_title="NOEN Seafood Analytics",
+        page_icon="🐟",
         layout="wide",
         initial_sidebar_state="collapsed"
     )
 
 
+        # ========== PAGE CONFIG ==========
+    st.set_page_config(
+        page_title="NOEN Seafood Analytics",
+        page_icon="🐟",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+
+        # ========== API CREDENTIALS ==========
+    API_EMAIL = st.secrets["API_EMAIL"]
+    API_KEY = st.secrets["API_KEY"]
+
+    google_cred = {
+  "type": st.secrets["service_account"],
+  "project_id": st.secrets["project_id"],
+  "private_key_id": st.secrets["private_key_id"],
+  "private_key": st.secrets["private_key"],
+  "client_id": st.secrets["client_id"],
+  "auth_uri": st.secrets["auth_uri"],
+  "token_uri": st.secrets["token_uri"],
+  "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
+  "client_x509_cert_url": st.secrets["client_x509_cert_url"],
+  "universe_domain": st.secrets["universe_domain"]
+}
+
     # ========== CUSTOM CSS ==========
     st.markdown("""
     <style>
-        /* Main dashboard styling */
-        .main {
-            background-color: #f8f9fa;
+        .stApp {
+            background-color: #f0f9ff;
         }
         
+        .main {
+            background-color: #f0f9ff;
+        }
+        
+        [data-testid="stAppViewContainer"] {
+            background-color: #f0f9ff;
+        }
+        
+        [data-testid="stHeader"] {
+            background-color: #f0f9ff;
+        }
         /* Header styling */
         h1 {
-            color: #1e293b;
+            color: #0c4a6e;
             font-weight: 700;
             padding-bottom: 0.5rem;
         }
         
         h2 {
-            color: #334155;
+            color: #075985;
             font-weight: 600;
             padding-top: 1rem;
             padding-bottom: 0.5rem;
         }
         
         h3 {
-            color: #475569;
+            color: #0369a1;
             font-weight: 600;
             font-size: 1.2rem;
         }
         
-        /* Metric cards */
+        /* Logo header container */
+        .logo-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1.5rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(14, 116, 144, 0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 2px solid #bae6fd;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .logo-image {
+            max-height: 120px;
+            width: auto;
+        }
+        
+        .company-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+        
+        .tagline {
+            color: #0369a1;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-top: 0.25rem;
+        }
+        
+        /* Metric cards with light blue theme */
         [data-testid="stMetric"] {
-            background-color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
+            border: 1px solid #bae6fd;
+            transition: all 0.3s ease;
+        }
+        
+        [data-testid="stMetric"]:hover {
+            box-shadow: 0 4px 12px rgba(14, 116, 144, 0.2);
+            transform: translateY(-2px);
         }
         
         [data-testid="stMetricLabel"] {
             font-weight: 600;
-            color: #64748b;
+            color: #0369a1;
+            font-size: 0.9rem;
+        }
+        
+        [data-testid="stMetricValue"] {
+            color: #0c4a6e;
         }
         
         /* Dataframe styling */
         [data-testid="stDataFrame"] {
-            border-radius: 0.5rem;
+            border-radius: 0.75rem;
             overflow: hidden;
+            border: 1px solid #bae6fd;
         }
         
         /* Filter section */
         .filter-container {
-            background-color: white;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
             padding: 1.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
             margin-bottom: 2rem;
+            border: 1px solid #bae6fd;
         }
         
         /* Divider */
         hr {
             margin: 2rem 0;
             border: none;
-            border-top: 2px solid #e2e8f0;
+            border-top: 2px solid #bae6fd;
         }
         
-        /* Tab styling */
+        /* Tab styling with light blue */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 2rem;
-            background-color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            gap: 1rem;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
+            border: 1px solid #bae6fd;
         }
         
         .stTabs [data-baseweb="tab"] {
             height: 3rem;
             padding: 0 2rem;
             font-weight: 600;
-            color: #64748b;
+            color: #0369a1;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
         }
         
         .stTabs [aria-selected="true"] {
-            background-color: #f1f5f9;
-            color: #0f172a;
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white !important;
+            box-shadow: 0 2px 4px rgba(8, 145, 178, 0.3);
         }
         
         /* Checkbox styling */
@@ -144,29 +247,62 @@ if authentication_status:
             padding: 0.5rem;
         }
         
-        /* Button styling */
+        /* Button styling with light blue theme */
         .stButton > button {
             font-weight: 600;
             border-radius: 0.5rem;
             padding: 0.5rem 2rem;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white;
+            border: none;
         }
         
         .stButton > button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 12px rgba(8, 145, 178, 0.3);
+            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        }
+        
+        /* Sidebar styling */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+        
+        /* Input fields */
+        .stTextInput input, .stSelectbox select, .stMultiSelect select {
+            border: 1px solid #bae6fd;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .stTextInput input:focus, .stSelectbox select:focus, .stMultiSelect select:focus {
+            border-color: #0891b2;
+            box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2);
+        }
+        
+        /* Success/Info messages */
+        .stSuccess {
+            background-color: #cffafe;
+            border-left: 4px solid #06b6d4;
+        }
+        
+        .stInfo {
+            background-color: #e0f2fe;
+            border-left: 4px solid #0891b2;
         }
     </style>
     """, unsafe_allow_html=True)
 
+    
 
-
+    
     # ========== DATA LOADING ==========
     @st.cache_data(ttl=300)
     def load_data():
         """Load and cache data from Google Sheets"""
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_file("google_sheets_credentials.json", scopes=scope)
+        creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
         sheet_id = "1E59oS6DXSHIs1GfyZeE2q8WeoUbfxCk_O-ZK0A04NcM"
@@ -222,20 +358,21 @@ if authentication_status:
         
         # Prepare product sales data
         df_product_sales_oneup = df_sales[
-            ["invoice_id", "item_id", "item_description", "country", "date", "total_order_line", "quantity", "source"]
+            ["invoice_id", "item_id", "item_description", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
         ]
         
         df_product_sales_sumup = df_transactions_sumup[
-            ["id", "product_name", "country", "timestamp", "total_price", "quantity", "source"]
+            ["id", "product_name", "country", "timestamp", "price", "total_price", "quantity", "source"]
         ].rename(columns={
             "product_name": "item_description",
             "timestamp": "date",
+            "price": "unit_price",
             "total_price": "total_order_line"
         })
         
         df_product_sales_sumup["item_id"] = 0
         df_product_sales_sumup = df_product_sales_sumup[
-            ["id", "item_id", "item_description", "country", "date", "total_order_line", "quantity", "source"]
+            ["id", "item_id", "item_description", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
         ]
         
         df_product_sales_merged = pd.concat([
@@ -319,23 +456,26 @@ if authentication_status:
             left_on="item_id",
             right_on="id"
         )
+
+        # df_merged = df_merged[df_merged["purchase_price"] > 0]
+        df_merged = df_merged[df_merged["item_description"] != '']
         
         df_merged["total_cost"] = df_merged["purchase_price"] * df_merged["quantity"]
-        df_merged["gross_margin"] = df_merged["total_order_line"] - df_merged["total_cost"]
-        
+        df_merged["total_gross_margin"] = df_merged["total_order_line"] - df_merged["total_cost"]
+      
         product_metrics = (
             df_merged.groupby(["item_description"], as_index=False)
             .agg({
                 "quantity": "sum",
                 "total_order_line": "sum",
-                "gross_margin": "sum"
+                "total_gross_margin": "sum"
             })
             .rename(columns={"total_order_line": "revenue"})
         )
         
-        product_metrics["margin_%"] = (product_metrics["gross_margin"] / product_metrics["revenue"]) * 100
+        product_metrics["margin_%"] = (product_metrics["total_gross_margin"] / product_metrics["revenue"]) * 100
         product_metrics["margin_contribution_%"] = (
-            (product_metrics["gross_margin"] / product_metrics["gross_margin"].sum()) * 100
+            (product_metrics["total_gross_margin"] / product_metrics["total_gross_margin"].sum()) * 100
         )
         
         return product_metrics
@@ -375,9 +515,27 @@ if authentication_status:
 
 
     # ========== HEADER ==========
-    authenticator.logout("logout", "main")
-    st.title("Commercial Analytics Monitor")
-    st.markdown("---")
+        # ========== HEADER WITH LOGO ==========
+    authenticator.logout("logout", "sidebar")
+    
+    # Create logo header
+    col1, col2 = st.columns([3, 1])
+    with open("NOEN-logo.png", "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    with col1:
+        st.markdown(f"""
+        <div class="logo-header">
+            <div class="logo-container">
+                <img src="data:image/png;base64,{data}" class="logo-image" alt="NOEN Logo">
+                <div>
+                    <h1 class="company-title">NOEN Seafood Analytics</h1>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("<div style='height: 40px'></div>", unsafe_allow_html=True)
 
     # ========== TABS ==========
     if "active_tab" not in st.session_state:
@@ -391,7 +549,7 @@ if authentication_status:
     # ========================================
     with tab1:
         # ========== FILTERS ==========
-        st.markdown('<div class="filter-container">', unsafe_allow_html=True)
+        # st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filters")
 
         col1, col2, col3 = st.columns([2, 2, 2])
@@ -405,17 +563,17 @@ if authentication_status:
             selected_range = st.selectbox("📅 Date Range", date_options, index=0)
 
             if selected_range == "Past Month":
-                start_date = today - pd.DateOffset(months=1)
-                end_date = today
+                start_date = max_date - pd.DateOffset(months=1)
+                end_date = max_date
             elif selected_range == "Last 3 Months":
-                start_date = today - pd.DateOffset(months=3)
-                end_date = today
+                start_date = max_date - pd.DateOffset(months=3)
+                end_date = max_date
             elif selected_range == "Last 6 Months":
-                start_date = today - pd.DateOffset(months=6)
-                end_date = today
+                start_date = max_date - pd.DateOffset(months=6)
+                end_date = max_date
             elif selected_range == "YTD":
-                start_date = datetime(today.year, 1, 1)
-                end_date = today
+                start_date = datetime(max_date.year, 1, 1)
+                end_date = max_date
             elif selected_range == "Custom Range":
                 start_date = st.date_input("📅 Start Date", value=min_date, min_value=min_date, max_value=max_date)
                 end_date = st.date_input("📅 End Date", value=max_date, min_value=min_date, max_value=max_date)
@@ -487,6 +645,7 @@ if authentication_status:
                     ]
                 )
                 .properties(height=400)
+                .configure(background='#f0f9ff;')
             )
             st.altair_chart(chart_revenue, use_container_width=True)
 
@@ -507,6 +666,7 @@ if authentication_status:
                     ]
                 )
                 .properties(height=400)
+                .configure(background='#f0f9ff;')
             )
             st.altair_chart(chart_transactions, use_container_width=True)
 
@@ -520,11 +680,12 @@ if authentication_status:
 
         # Calculate product metrics using cached function
         product_metrics = calculate_product_metrics(filtered_sales, df_product_clean)
-
+        # st.write(product_metrics)
         # Top products
         top_units = product_metrics.nlargest(10, "quantity")
         top_product_revenue = product_metrics.nlargest(10, "revenue")
-        top_margin = product_metrics.nlargest(10, "gross_margin")
+        # top_margin = product_metrics.nlargest(10, "total_gross_margin")
+        top_margin = product_metrics[product_metrics["margin_%"] != 100].nlargest(10, "total_gross_margin")
 
         # Product KPIs
         col1, col2, col3, col4 = st.columns(4)
@@ -538,10 +699,10 @@ if authentication_status:
             st.metric("🏅 Best Seller", name, f"{int(best_seller['quantity']):,} units")
 
         with col3:
-            st.metric("💵 Total Gross Margin", f"${product_metrics['gross_margin'].sum():,.0f}")
+            st.metric("💵 Total Gross Margin", f"${product_metrics[product_metrics["margin_%"] != 100]['total_gross_margin'].sum():,.0f}")
 
         with col4:
-            avg_margin = product_metrics["margin_%"].mean()
+            avg_margin = product_metrics[product_metrics["margin_%"] != 100]["margin_%"].mean()
             st.metric("📈 Avg Margin %", f"{avg_margin:.1f}%")
 
         st.markdown("---")
@@ -562,10 +723,11 @@ if authentication_status:
                         alt.Tooltip("item_description:N", title="Product"),
                         alt.Tooltip("quantity:Q", title="Units Sold", format=","),
                         alt.Tooltip("revenue:Q", title="Revenue", format="$,.2f"),
-                        alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
+                        # alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
                     ]
                 )
                 .properties(height=400)
+                .configure(background='#f0f9ff;')
             )
             st.altair_chart(chart_units, use_container_width=True)
 
@@ -582,10 +744,11 @@ if authentication_status:
                         alt.Tooltip("item_description:N", title="Product"),
                         alt.Tooltip("revenue:Q", title="Revenue", format="$,.2f"),
                         alt.Tooltip("quantity:Q", title="Units Sold", format=","),
-                        alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
+                        # alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
                     ]
                 )
                 .properties(height=400)
+                .configure(background='#f0f9ff;')
             )
             st.altair_chart(chart_prod_revenue, use_container_width=True)
 
@@ -594,17 +757,18 @@ if authentication_status:
             alt.Chart(top_margin)
             .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
             .encode(
-                x=alt.X("gross_margin:Q", title="Gross Margin ($)", axis=alt.Axis(format="$,.0f")),
+                x=alt.X("total_gross_margin:Q", title="Gross Margin ($)", axis=alt.Axis(format="$,.0f")),
                 y=alt.Y("item_description:N", sort="-x", title=None),
                 color=alt.value("#f59e0b"),
                 tooltip=[
                     alt.Tooltip("item_description:N", title="Product"),
-                    alt.Tooltip("gross_margin:Q", title="Gross Margin", format="$,.2f"),
+                    alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format="$,.2f"),
                     alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
                     alt.Tooltip("revenue:Q", title="Revenue", format="$,.2f")
                 ]
             )
             .properties(height=400)
+            .configure(background='#f0f9ff;')
         )
         st.altair_chart(chart_margin, use_container_width=True)
 
@@ -735,6 +899,8 @@ if authentication_status:
                 hovermode="x unified",
                 legend_title="Data Type",
                 template="plotly_white",
+                plot_bgcolor="#f0f9ff",   
+                paper_bgcolor="#f0f9ff"
             )
 
             st.plotly_chart(fig, use_container_width=True)
@@ -762,33 +928,41 @@ if authentication_status:
         st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filter Invoices")
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
+
+        min_date = df_sales_order_merged["date"].min()
+        max_date = df_sales_order_merged["date"].max()
         
         with col1:
-            inv_min_date = df_invoices["date"].min()
-            inv_max_date = df_invoices["date"].max()
-            inv_start_date = st.date_input(
-                "📅 Start Date", 
-                value=inv_min_date, 
-                min_value=inv_min_date, 
-                max_value=inv_max_date,
-                key="invoice_start"
-            )
+            date_options = ["Past Month", "Last 3 Months", "Last 6 Months", "YTD", "Custom Range"]
+            selected_range = st.selectbox("📅 Invoice Date Range", date_options, index=0)
+            # inv_start_date = df_invoices["date"].min()
+            # inv_end_date = df_invoices["date"].max()
+
+            if selected_range == "Past Month":
+                inv_start_date = max_date - pd.DateOffset(months=1)
+                inv_end_date = max_date
+            elif selected_range == "Last 3 Months":
+                inv_start_date = max_date - pd.DateOffset(months=3)
+                inv_end_date = max_date
+            elif selected_range == "Last 6 Months":
+                inv_start_date = max_date - pd.DateOffset(months=6)
+                inv_end_date = max_date
+            elif selected_range == "YTD":
+                inv_start_date = datetime(max_date.year, 1, 1)
+                inv_end_date = max_date
+            elif selected_range == "Custom Range":
+                inv_start_date = st.date_input("📅 Start Date", value=min_date, min_value=min_date, max_value=max_date)
+                inv_end_date = st.date_input("📅 End Date", value=max_date, min_value=min_date, max_value=max_date)
+            else:
+                inv_start_date, inv_end_date = min_date, max_date
+
         
         with col2:
-            inv_end_date = st.date_input(
-                "📅 End Date", 
-                value=inv_max_date, 
-                min_value=inv_min_date, 
-                max_value=inv_max_date,
-                key="invoice_end"
-            )
-        
-        with col3:
             inv_countries = ["All"] + sorted(df_invoices["country"].dropna().unique().tolist())
             inv_selected_country = st.selectbox("🌍 Country", inv_countries, key="invoice_country")
         
-        with col4:
+        with col3:
             payment_status = st.selectbox(
                 "💳 Payment Status", 
                 ["All", "Paid", "Unpaid"],
@@ -1010,5 +1184,4 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
-
             st.info("No invoices found matching the selected filters")
