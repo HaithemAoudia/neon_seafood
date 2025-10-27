@@ -83,6 +83,7 @@ if authentication_status:
     # ========== CUSTOM CSS ==========
     st.markdown("""
     <style>
+        /* Main dashboard styling with light blue theme */
         .stApp {
             background-color: #f0f9ff;
         }
@@ -98,6 +99,7 @@ if authentication_status:
         [data-testid="stHeader"] {
             background-color: #f0f9ff;
         }
+        
         /* Header styling */
         h1 {
             color: #0c4a6e;
@@ -118,10 +120,10 @@ if authentication_status:
             font-size: 1.2rem;
         }
         
-        /* Logo header container */
+        /* Logo header container - Mobile responsive */
         .logo-header {
             background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-            padding: 1.5rem 2rem;
+            padding: 1rem;
             border-radius: 1rem;
             box-shadow: 0 4px 6px rgba(14, 116, 144, 0.1);
             margin-bottom: 2rem;
@@ -129,34 +131,64 @@ if authentication_status:
             align-items: center;
             justify-content: space-between;
             border: 2px solid #bae6fd;
+            flex-wrap: wrap;
         }
         
         .logo-container {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
         }
         
         .logo-image {
-            max-height: 120px;
+            max-height: 80px;
             width: auto;
+            max-width: 100%;
         }
         
         .company-title {
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 700;
             background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin: 0;
+            text-align: center;
         }
         
         .tagline {
             color: #0369a1;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: 500;
             margin-top: 0.25rem;
+            text-align: center;
+        }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            .logo-header {
+                padding: 1rem 0.5rem;
+            }
+            
+            .logo-container {
+                gap: 0.5rem;
+            }
+            
+            .logo-image {
+                max-height: 60px;
+            }
+            
+            .company-title {
+                font-size: 1.2rem;
+            }
+            
+            .tagline {
+                font-size: 0.75rem;
+            }
         }
         
         /* Metric cards with light blue theme */
@@ -169,9 +201,23 @@ if authentication_status:
             transition: all 0.3s ease;
         }
         
-        [data-testid="stMetric"]:hover {
-            box-shadow: 0 4px 12px rgba(14, 116, 144, 0.2);
-            transform: translateY(-2px);
+        /* Remove hover effects on mobile for better performance */
+        @media (hover: hover) {
+            [data-testid="stMetric"]:hover {
+                box-shadow: 0 4px 12px rgba(14, 116, 144, 0.2);
+                transform: translateY(-2px);
+            }
+            
+            .stButton > button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 12px rgba(8, 145, 178, 0.3);
+                background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+            }
+            
+            .stTabs [data-baseweb="tab"]:hover {
+                background-color: #e0f2fe;
+                color: #0c4a6e;
+            }
         }
         
         [data-testid="stMetricLabel"] {
@@ -189,6 +235,7 @@ if authentication_status:
             border-radius: 0.75rem;
             overflow: hidden;
             border: 1px solid #bae6fd;
+            overflow-x: auto;
         }
         
         /* Filter section */
@@ -210,32 +257,45 @@ if authentication_status:
         
         /* Tab styling with light blue */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 1rem;
+            gap: 0.5rem;
             background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-            padding: 1rem 1.5rem;
+            padding: 0.75rem;
             border-radius: 0.75rem;
             box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
             border: 1px solid #bae6fd;
+            overflow-x: auto;
+            flex-wrap: nowrap;
         }
         
         .stTabs [data-baseweb="tab"] {
-            height: 3rem;
-            padding: 0 2rem;
+            height: auto;
+            min-height: 2.5rem;
+            padding: 0.5rem 1rem;
             font-weight: 600;
             color: #0369a1;
             border-radius: 0.5rem;
             transition: all 0.2s ease;
-        }
-        
-        .stTabs [data-baseweb="tab"]:hover {
-            background-color: #e0f2fe;
-            color: #0c4a6e;
+            white-space: nowrap;
+            font-size: 0.9rem;
         }
         
         .stTabs [aria-selected="true"] {
             background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
             color: white !important;
             box-shadow: 0 2px 4px rgba(8, 145, 178, 0.3);
+        }
+        
+        /* Mobile tab adjustments */
+        @media (max-width: 768px) {
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 0.25rem;
+                padding: 0.5rem;
+            }
+            
+            .stTabs [data-baseweb="tab"] {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
         }
         
         /* Checkbox styling */
@@ -252,12 +312,6 @@ if authentication_status:
             background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
             color: white;
             border: none;
-        }
-        
-        .stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(8, 145, 178, 0.3);
-            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
         }
         
         /* Sidebar styling */
@@ -1177,6 +1231,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
