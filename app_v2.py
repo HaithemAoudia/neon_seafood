@@ -78,7 +78,7 @@ if authentication_status:
   "universe_domain": st.secrets["universe_domain"]
 }
 
-    sheet_id = "1E59oS6DXSHIs1GfyZeE2q8WeoUbfxCk_O-ZK0A04NcM"
+    st.secrets["sheet_id"]
 
     # ========== CUSTOM CSS ==========
     st.markdown("""
@@ -1177,6 +1177,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
