@@ -1,5 +1,4 @@
 import streamlit as st
-import os
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
@@ -7,21 +6,15 @@ import altair as alt
 from datetime import datetime, timedelta
 import requests
 from requests.auth import HTTPBasicAuth
-import os
-import zipfile
 from io import BytesIO
 from PyPDF2 import PdfMerger
 import base64
 import json
-from gspread_dataframe import set_with_dataframe, get_as_dataframe
+from gspread_dataframe import set_with_dataframe
 import plotly.graph_objects as go
-import plotly.express as px
 import streamlit_authenticator as stauth
 import pickle
 from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 names = ["Chems"]
