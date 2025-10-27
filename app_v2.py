@@ -78,6 +78,8 @@ if authentication_status:
   "universe_domain": st.secrets["universe_domain"]
 }
 
+    sheet_id = st.secrets["sheet_id"]
+
     # ========== CUSTOM CSS ==========
     st.markdown("""
     <style>
@@ -298,8 +300,6 @@ if authentication_status:
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
         creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
-        
-        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         
         df_sales = pd.DataFrame(workbook.worksheet("OneUp - Invoices").get_all_records()).drop_duplicates()
@@ -480,8 +480,7 @@ if authentication_status:
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
         creds = Credentials.from_service_account_infor(google_cred, scopes=scope)
         client = gspread.authorize(creds)
-        
-        sheet_id = st.secrets["sheet_id"]
+    
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         
@@ -500,7 +499,6 @@ if authentication_status:
 
 
     def update_product_inventory(new_df):
-        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         set_with_dataframe(sheet, new_df)
@@ -1179,4 +1177,5 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
