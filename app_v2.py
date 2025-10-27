@@ -65,7 +65,7 @@ if authentication_status:
     API_KEY = st.secrets["API_KEY"]
 
     google_cred = {
-  "type": st.secrets["service_account"],
+  "type": st.secrets["type"],
   "project_id": st.secrets["project_id"],
   "private_key_id": st.secrets["private_key_id"],
   "private_key": st.secrets["private_key"],
@@ -1176,4 +1176,5 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
+
             st.info("No invoices found matching the selected filters")
