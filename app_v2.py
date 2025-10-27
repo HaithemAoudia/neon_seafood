@@ -16,7 +16,8 @@ import streamlit_authenticator as stauth
 import pickle
 from pathlib import Path
 
-
+names = ["Chems"]
+usernames = ["Noen Seafood"]
 
 file_path = Path(__file__).parent / "hashed_pw.pkl"
 with file_path.open("rb") as file:
@@ -1177,6 +1178,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
