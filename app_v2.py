@@ -292,7 +292,7 @@ if authentication_status:
 
     
     # ========== DATA LOADING ==========
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=300, show_spinner=False)  
     def load_data():
         """Load and cache data from Google Sheets"""
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -310,7 +310,7 @@ if authentication_status:
         df_product_inventory = pd.DataFrame(workbook.worksheet("Product Inventory").get_all_records()).drop_duplicates()
         return df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory
 
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=300, show_spinner=False)
     def prepare_data(_df_sales, _df_product, _df_transactions_sumup):
         """Prepare and transform data once - cached for performance"""
         df_sales = _df_sales.copy()
@@ -1199,4 +1199,5 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
+
             st.info("No invoices found matching the selected filters")
