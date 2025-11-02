@@ -296,7 +296,7 @@ if authentication_status:
     def load_data():
         """Load and cache data from Google Sheets"""
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_info("google_sheets_credentials.json", scopes=scope)
+        creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
         sheet_id = st.secrets["sheet_id"]
@@ -482,7 +482,7 @@ if authentication_status:
     # ========= INVENTORY FUNCTIONS ============
     def get_product_inventory(product_name:str):
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_info("google_sheets_credentials.json", scopes=scope)
+        creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
         sheet_id = st.secrets["sheet_id"]
@@ -498,7 +498,7 @@ if authentication_status:
 
     #Update Inventory value for a given product name
     scope = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info("google_sheets_credentials.json", scopes=scope)
+    creds = Credentials.from_service_account_info(google_cred, scopes=scope)
     client = gspread.authorize(creds)
 
 
