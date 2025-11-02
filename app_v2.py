@@ -794,7 +794,9 @@ if authentication_status:
     # ========================================
     # TAB 2: INVENTORY
     # ========================================
-
+    if 'inventory_updated' not in st.session_state:
+        st.session_state.inventory_updated = False
+    
     with tab2:
 
         # --- 🧾 Inventory display ---
@@ -1208,3 +1210,4 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
