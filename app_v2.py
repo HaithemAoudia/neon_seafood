@@ -16,6 +16,7 @@ import streamlit_authenticator as stauth
 import pickle
 from pathlib import Path
 
+
 names = ["Chems"]
 usernames = ["Noen Seafood"]
 
@@ -77,12 +78,9 @@ if authentication_status:
   "universe_domain": st.secrets["universe_domain"]
 }
 
-    sheet_id = st.secrets["sheet_id"]
-
     # ========== CUSTOM CSS ==========
     st.markdown("""
     <style>
-        /* Main dashboard styling with light blue theme */
         .stApp {
             background-color: #f0f9ff;
         }
@@ -98,7 +96,6 @@ if authentication_status:
         [data-testid="stHeader"] {
             background-color: #f0f9ff;
         }
-        
         /* Header styling */
         h1 {
             color: #0c4a6e;
@@ -139,7 +136,7 @@ if authentication_status:
         }
         
         .logo-image {
-            max-height: 100px;
+            max-height: 120px;
             width: auto;
         }
         
@@ -299,8 +296,10 @@ if authentication_status:
     def load_data():
         """Load and cache data from Google Sheets"""
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_info(google_cred, scopes=scope)
+        creds = Credentials.from_service_account_info("google_sheets_credentials.json", scopes=scope)
         client = gspread.authorize(creds)
+        
+        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         
         df_sales = pd.DataFrame(workbook.worksheet("OneUp - Invoices").get_all_records()).drop_duplicates()
@@ -320,7 +319,7 @@ if authentication_status:
         
         # Convert data types
         df_sales["date"] = pd.to_datetime(df_sales["date"], errors="coerce")
-        df_sales["paid"] = pd.to_numeric(df_sales["paid"], errors="coerce")
+        df_sales["paid"] = pd.to_numeric(df_sales["paid"] - df_sales["tax_amount"], errors="coerce")
         df_sales["quantity"] = pd.to_numeric(df_sales["quantity"], errors="coerce")
         df_sales["unit_price"] = pd.to_numeric(df_sales["unit_price"], errors="coerce")
         df_sales["total_order_line"] = pd.to_numeric(df_sales["total_order_line"], errors="coerce")
@@ -353,13 +352,18 @@ if authentication_status:
         
         # Prepare product sales data
         df_product_sales_oneup = df_sales[
-            ["invoice_id", "item_id", "item_description", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
+            ["invoice_id", "item_id", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
         ]
+
+        # Merge One up Sales with One up Products to get product name based on id
+        df_product_sales_oneup["product_name"] = df_product_sales_oneup["item_id"].map(df_product.set_index("id")["name"])
+
+        
+        
         
         df_product_sales_sumup = df_transactions_sumup[
             ["id", "product_name", "country", "timestamp", "price", "total_price", "quantity", "source"]
         ].rename(columns={
-            "product_name": "item_description",
             "timestamp": "date",
             "price": "unit_price",
             "total_price": "total_order_line"
@@ -367,7 +371,7 @@ if authentication_status:
         
         df_product_sales_sumup["item_id"] = 0
         df_product_sales_sumup = df_product_sales_sumup[
-            ["id", "item_id", "item_description", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
+            ["id", "item_id", "product_name", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
         ]
         
         df_product_sales_merged = pd.concat([
@@ -379,12 +383,11 @@ if authentication_status:
         
         return df_sales_order_merged, df_invoices, df_product_sales_merged, df_product
 
-    # Load data
-    with st.spinner("Setting Up Your Environment..."):
-        df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory  = load_data()
-        df_sales_order_merged, df_invoices, df_product_sales_merged, df_product_clean = prepare_data(
-            df_sales, df_product, df_transactions_sumup
-        )
+    
+    df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory  = load_data()
+    df_sales_order_merged, df_invoices, df_product_sales_merged, df_product_clean = prepare_data(
+        df_sales, df_product, df_transactions_sumup
+    )
 
     # ========== HELPER FUNCTIONS ==========
     def print_invoice(invoice_id, format):
@@ -443,7 +446,7 @@ if authentication_status:
     def calculate_product_metrics(df, df_product):
         """Calculate product metrics"""
         if len(df) == 0:
-            return pd.DataFrame(columns=["item_description", "quantity", "revenue", "gross_margin", "margin_%", "margin_contribution_%"])
+            return pd.DataFrame(columns=["product_name", "quantity", "revenue", "gross_margin", "margin_%", "margin_contribution_%"])
         
         df_merged = df.merge(
             df_product[["id", "purchase_price"]],
@@ -453,13 +456,13 @@ if authentication_status:
         )
 
         # df_merged = df_merged[df_merged["purchase_price"] > 0]
-        df_merged = df_merged[df_merged["item_description"] != '']
+        df_merged = df_merged[df_merged["product_name"] != '']
         
         df_merged["total_cost"] = df_merged["purchase_price"] * df_merged["quantity"]
         df_merged["total_gross_margin"] = df_merged["total_order_line"] - df_merged["total_cost"]
       
         product_metrics = (
-            df_merged.groupby(["item_description"], as_index=False)
+            df_merged.groupby(["product_name"], as_index=False)
             .agg({
                 "quantity": "sum",
                 "total_order_line": "sum",
@@ -479,9 +482,10 @@ if authentication_status:
     # ========= INVENTORY FUNCTIONS ============
     def get_product_inventory(product_name:str):
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
-        creds = Credentials.from_service_account_infor(google_cred, scopes=scope)
+        creds = Credentials.from_service_account_info("google_sheets_credentials.json", scopes=scope)
         client = gspread.authorize(creds)
-    
+        
+        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         
@@ -494,12 +498,13 @@ if authentication_status:
 
     #Update Inventory value for a given product name
     scope = ["https://www.googleapis.com/auth/spreadsheets"]
-    creds = Credentials.from_service_account_info(google_cred, scopes=scope)
+    creds = Credentials.from_service_account_info("google_sheets_credentials.json", scopes=scope)
     client = gspread.authorize(creds)
 
 
 
     def update_product_inventory(new_df):
+        sheet_id = st.secrets["sheet_id"]
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         set_with_dataframe(sheet, new_df)
@@ -591,76 +596,80 @@ if authentication_status:
 
         # Calculate customer metrics using cached function
         metrics = calculate_customer_metrics(filtered_df)
-
         # Top customers
-        top_revenue = metrics.nlargest(10, "total_revenue")
-        top_transactions = metrics.nlargest(10, "num_transactions")
+        if not metrics.empty:
+            top_revenue = metrics.nlargest(10, "total_revenue")
+            top_transactions = metrics.nlargest(10, "num_transactions")
 
-        # KPI Cards
-        col1, col2, col3, col4 = st.columns(4)
+            # KPI Cards
+            col1, col2, col3, col4 = st.columns([0.6, 1, 0.5, 1])
 
-        with col1:
-            st.metric("💰 Total Revenue", f"${metrics['total_revenue'].sum():,.0f}")
+            with col1:
+                st.metric("💰 Total Revenue", f"€{metrics['total_revenue'].sum():,.0f}")
 
-        with col2:
-            top_customer = top_revenue.iloc[0]
-            name = top_customer["customer_name"][:20] + "..." if len(top_customer["customer_name"]) > 20 else top_customer["customer_name"]
-            st.metric("🏆 Top Customer", name, f"${top_customer['total_revenue']:,.0f}")
+            with col2:
+                top_customer = top_revenue.iloc[0]
+                name = top_customer["customer_name"]
+                st.metric("🏆 Top Customer", name, f"€{top_customer['total_revenue']:,.0f}", width="content")
+            with col3:
+                st.metric("📦 Average Order Value", f"€{metrics['AOV'].mean():,.0f}")
+            with col4:
+                most_active = top_transactions.iloc[0]
+                name = most_active["customer_name"]
+                st.metric("🔄 Most Active Customer", name, f"{int(most_active['num_transactions'])} orders")
+            st.markdown("---")
 
-        with col3:
-            st.metric("📦 Average Order Value", f"${metrics['AOV'].mean():,.0f}")
+            # Charts
+            col1, col2 = st.columns(2)
 
-        with col4:
-            most_active = top_transactions.iloc[0]
-            name = most_active["customer_name"][:20] + "..." if len(most_active["customer_name"]) > 20 else most_active["customer_name"]
-            st.metric("🔄 Most Active Customer", name, f"{int(most_active['num_transactions'])} orders")
-
-        st.markdown("---")
-
-        # Charts
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("💰 Top 10 Customers by Revenue")
-            chart_revenue = (
-                alt.Chart(top_revenue)
-                .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
-                .encode(
-                    x=alt.X("total_revenue:Q", title="Revenue ($)", axis=alt.Axis(format="$,.0f")),
-                    y=alt.Y("customer_name:N", sort="-x", title=None),
-                    color=alt.value("#10b981"),
-                    tooltip=[
-                        alt.Tooltip("customer_name:N", title="Customer"),
-                        alt.Tooltip("total_revenue:Q", title="Revenue", format="$,.2f"),
-                        alt.Tooltip("num_transactions:Q", title="Orders"),
-                        alt.Tooltip("AOV:Q", title="AOV", format="$,.2f")
-                    ]
+            with col1:
+                st.subheader("💰 Top 10 Customers by Revenue")
+                chart_revenue = (
+                    alt.Chart(top_revenue)
+                    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                    .encode(
+                        x=alt.X("total_revenue:Q", title="Revenue (€)", axis=alt.Axis(format=".0f")),
+                        y=alt.Y("customer_name:N", sort="-x", title=None),
+                        color=alt.value("#10b981"),
+                        tooltip=[
+                            alt.Tooltip("customer_name:N", title="Customer"),
+                            alt.Tooltip("total_revenue:Q", title="Revenue", format=".2f"),
+                            alt.Tooltip("num_transactions:Q", title="Orders"),
+                            alt.Tooltip("AOV:Q", title="AOV", format=".2f")
+                        ]
+                    )
+                    .properties(height=400)
+                    .configure(background='#f0f9ff;')
                 )
-                .properties(height=400)
-                .configure(background='#f0f9ff;')
-            )
-            st.altair_chart(chart_revenue, use_container_width=True)
+                st.altair_chart(chart_revenue, use_container_width=True)
 
-        with col2:
-            st.subheader("🔁 Top 10 by Transaction Count")
-            chart_transactions = (
-                alt.Chart(top_transactions)
-                .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
-                .encode(
-                    x=alt.X("num_transactions:Q", title="Number of Transactions"),
-                    y=alt.Y("customer_name:N", sort="-x", title=None),
-                    color=alt.value("#3b82f6"),
-                    tooltip=[
-                        alt.Tooltip("customer_name:N", title="Customer"),
-                        alt.Tooltip("num_transactions:Q", title="Transactions"),
-                        alt.Tooltip("total_revenue:Q", title="Revenue", format="$,.2f"),
-                        alt.Tooltip("AOV:Q", title="AOV", format="$,.2f")
-                    ]
+            with col2:
+                st.subheader("🔁 Top 10 by Transaction Count")
+                chart_transactions = (
+                    alt.Chart(top_transactions)
+                    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                    .encode(
+                        x=alt.X("num_transactions:Q", title="Number of Transactions"),
+                        y=alt.Y("customer_name:N", sort="-x", title=None),
+                        color=alt.value("#3b82f6"),
+                        tooltip=[
+                            alt.Tooltip("customer_name:N", title="Customer"),
+                            alt.Tooltip("num_transactions:Q", title="Transactions"),
+                            alt.Tooltip("total_revenue:Q", title="Revenue", format=".2f"),
+                            alt.Tooltip("AOV:Q", title="AOV", format=".2f")
+                        ]
+                    )
+                    .properties(height=400)
+                    .configure(background='#f0f9ff;')
                 )
-                .properties(height=400)
-                .configure(background='#f0f9ff;')
-            )
-            st.altair_chart(chart_transactions, use_container_width=True)
+                st.altair_chart(chart_transactions, use_container_width=True)
+
+        st.markdown("""
+#### **Revenue Calculations**
+- **Total Revenue** = Amount Paid − VAT Tax  
+- **Average Order Value (AOV)** = Total Revenue ÷ Number of Transactions  
+- **Transaction Count** = Sum of Invoice IDs  
+""")
 
         # ========== PRODUCT ANALYSIS ==========
         st.header("📦 Product Performance")
@@ -672,97 +681,112 @@ if authentication_status:
 
         # Calculate product metrics using cached function
         product_metrics = calculate_product_metrics(filtered_sales, df_product_clean)
-        # st.write(product_metrics)
         # Top products
-        top_units = product_metrics.nlargest(10, "quantity")
-        top_product_revenue = product_metrics.nlargest(10, "revenue")
-        # top_margin = product_metrics.nlargest(10, "total_gross_margin")
-        top_margin = product_metrics[product_metrics["margin_%"] != 100].nlargest(10, "total_gross_margin")
+        if not product_metrics.empty:
+            top_units = product_metrics.nlargest(10, "quantity")
+            top_product_revenue = product_metrics.nlargest(10, "revenue")
+            # top_margin = product_metrics.nlargest(10, "total_gross_margin")
+            top_margin = product_metrics[product_metrics["margin_%"] != 100].nlargest(10, "total_gross_margin")
 
-        # Product KPIs
-        col1, col2, col3, col4 = st.columns(4)
+            # Product KPIs
+            col1, col2, col3, col4 = st.columns([0.3, 1, 0.3, 0.3])
 
-        with col1:
-            st.metric("📊 Total Units Sold", f"{int(product_metrics['quantity'].sum()):,}")
+            with col1:
+                st.metric("📊 Total Units Sold", f"{int(product_metrics['quantity'].sum()):,}")
 
-        with col2:
-            best_seller = top_units.iloc[0]
-            name = best_seller["item_description"][:20] + "..." if len(best_seller["item_description"]) > 20 else best_seller["item_description"]
-            st.metric("🏅 Best Seller", name, f"{int(best_seller['quantity']):,} units")
+            with col2:
+                best_seller = top_units.iloc[0]
+                name = best_seller["product_name"]
+                st.metric("🏅 Best Seller", name, f"{int(best_seller['quantity']):,} units")
 
-        with col3:
-            st.metric("💵 Total Gross Margin", f"${product_metrics[product_metrics["margin_%"] != 100]['total_gross_margin'].sum():,.0f}")
+            with col3:
+                st.metric("💵 Total Gross Margin", f"€{product_metrics[product_metrics["margin_%"] != 100]['total_gross_margin'].sum():,.0f}")
 
-        with col4:
-            avg_margin = product_metrics[product_metrics["margin_%"] != 100]["margin_%"].mean()
-            st.metric("📈 Avg Margin %", f"{avg_margin:.1f}%")
+            with col4:
+                avg_margin = product_metrics[product_metrics["margin_%"] != 100]["margin_%"].mean()
+                st.metric("📈 Avg Margin %", f"{avg_margin:.1f}%")
 
-        st.markdown("---")
+            
+            st.markdown("---")
 
-        # Product charts
-        col1, col2 = st.columns(2)
 
-        with col1:
-            st.subheader("📦 Top 10 Products by Units Sold")
-            chart_units = (
-                alt.Chart(top_units)
+            # Product charts
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.subheader("📦 Top 10 Products by Units Sold")
+                chart_units = (
+                    alt.Chart(top_units)
+                    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                    .encode(
+                        x=alt.X("quantity:Q", title="Units Sold"),
+                        y=alt.Y("product_name:N", sort="-x", title=None),
+                        color=alt.value("#10b981"),
+                        tooltip=[
+                            alt.Tooltip("product_name:N", title="Product"),
+                            alt.Tooltip("quantity:Q", title="Units Sold", format=","),
+                            alt.Tooltip("revenue:Q", title="Revenue", format=".2f"),
+                            # alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
+                        ]
+                    )
+                    .properties(height=400)
+                    .configure(background='#f0f9ff;')
+                )
+                st.altair_chart(chart_units, use_container_width=True)
+
+            with col2:
+                st.subheader("💰 Top 10 Products by Revenue")
+                chart_prod_revenue = (
+                    alt.Chart(top_product_revenue)
+                    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                    .encode(
+                        x=alt.X("revenue:Q", title="Revenue (€)", axis=alt.Axis(format=".0f")),
+                        y=alt.Y("product_name:N", sort="-x", title=None),
+                        color=alt.value("#3b82f6"),
+                        tooltip=[
+                            alt.Tooltip("product_name:N", title="Product"),
+                            alt.Tooltip("revenue:Q", title="Revenue", format=".2f"),
+                            alt.Tooltip("quantity:Q", title="Units Sold", format=","),
+                            # alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
+                        ]
+                    )
+                    .properties(height=400)
+                    .configure(background='#f0f9ff;')
+                )
+                st.altair_chart(chart_prod_revenue, use_container_width=True)
+
+            st.subheader("🏅 Top 10 Products by Gross Margin")
+            chart_margin = (
+                alt.Chart(top_margin)
                 .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
                 .encode(
-                    x=alt.X("quantity:Q", title="Units Sold"),
-                    y=alt.Y("item_description:N", sort="-x", title=None),
-                    color=alt.value("#10b981"),
+                    x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
+                    y=alt.Y("product_name:N", sort="-x", title=None),
+                    color=alt.value("#f59e0b"),
                     tooltip=[
-                        alt.Tooltip("item_description:N", title="Product"),
-                        alt.Tooltip("quantity:Q", title="Units Sold", format=","),
-                        alt.Tooltip("revenue:Q", title="Revenue", format="$,.2f"),
-                        # alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
+                        alt.Tooltip("product_name:N", title="Product"),
+                        alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format=".2f"),
+                        alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
+                        alt.Tooltip("revenue:Q", title="Revenue", format=".2f")
                     ]
                 )
                 .properties(height=400)
                 .configure(background='#f0f9ff;')
             )
-            st.altair_chart(chart_units, use_container_width=True)
+            st.altair_chart(chart_margin, use_container_width=True)
 
-        with col2:
-            st.subheader("💰 Top 10 Products by Revenue")
-            chart_prod_revenue = (
-                alt.Chart(top_product_revenue)
-                .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
-                .encode(
-                    x=alt.X("revenue:Q", title="Revenue ($)", axis=alt.Axis(format="$,.0f")),
-                    y=alt.Y("item_description:N", sort="-x", title=None),
-                    color=alt.value("#3b82f6"),
-                    tooltip=[
-                        alt.Tooltip("item_description:N", title="Product"),
-                        alt.Tooltip("revenue:Q", title="Revenue", format="$,.2f"),
-                        alt.Tooltip("quantity:Q", title="Units Sold", format=","),
-                        # alt.Tooltip("margin_%:Q", title="Margin %", format=".1f")
-                    ]
-                )
-                .properties(height=400)
-                .configure(background='#f0f9ff;')
-            )
-            st.altair_chart(chart_prod_revenue, use_container_width=True)
 
-        st.subheader("🏅 Top 10 Products by Gross Margin")
-        chart_margin = (
-            alt.Chart(top_margin)
-            .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
-            .encode(
-                x=alt.X("total_gross_margin:Q", title="Gross Margin ($)", axis=alt.Axis(format="$,.0f")),
-                y=alt.Y("item_description:N", sort="-x", title=None),
-                color=alt.value("#f59e0b"),
-                tooltip=[
-                    alt.Tooltip("item_description:N", title="Product"),
-                    alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format="$,.2f"),
-                    alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
-                    alt.Tooltip("revenue:Q", title="Revenue", format="$,.2f")
-                ]
-            )
-            .properties(height=400)
-            .configure(background='#f0f9ff;')
-        )
-        st.altair_chart(chart_margin, use_container_width=True)
+        st.markdown("""
+    #### **Product Sales Calculations**
+    - **Units Sold by Product** = Sum of product sales order line quantity
+    - **Revenue Generated per Products** = Sum of Total Order Line                
+
+
+    #### **Gross Margin Calculations**
+    - **Total Cost** = Purchase Price × Quantity  
+    - **Total Gross Margin** = Total Order Line (Product Revenue *excl. VAT*) − Total Cost  
+    """)
+
 
 
 
@@ -917,7 +941,6 @@ if authentication_status:
         st.markdown("---")
         
         # ========== INVOICE FILTERS ==========
-        st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filter Invoices")
         
         col1, col2, col3 = st.columns(3)
@@ -995,7 +1018,7 @@ if authentication_status:
         
         with col2:
             total_amount = filtered_invoices["amount"].sum()
-            st.metric("💰 Total Amount", f"${total_amount:,.2f}")
+            st.metric("💰 Total Amount", f"€{total_amount:,.2f}")
         
         with col3:
             paid_count = len(filtered_invoices[filtered_invoices["paid"] > 0])
@@ -1103,7 +1126,7 @@ if authentication_status:
                     st.text(row["date"].strftime("%Y-%m-%d"))
                 
                 with cols[6]:
-                    st.text(f"${row['amount']:,.2f}")
+                    st.text(f"€{row['amount']:,.2f}")
                 
                 with cols[7]:
                     st.text("✅" if row["sent"] else "❌")
@@ -1176,9 +1199,7 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
-
             st.info("No invoices found matching the selected filters")
-
 
 
 
