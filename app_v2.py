@@ -800,6 +800,10 @@ if authentication_status:
         # --- 🧾 Inventory display ---
         st.write("### Product Inventory")
 
+        if st.session_state.inventory_updated:
+            st.success("✅ Inventory updated successfully!")
+            st.session_state.inventory_updated = False
+
         # Display headers
         product_list = df_product_inventory["product_name"].tolist()
 
@@ -842,7 +846,6 @@ if authentication_status:
             for idx, qty in updated_quantities.items():
                 df_product_inventory.at[idx, "current_quantity"] = qty
             update_product_inventory(df_product_inventory)
-            st.success("Quantities updated successfully!")
             load_data.clear()
             st.session_state.inventory_updated = True
             st.rerun()
@@ -1203,4 +1206,5 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
+
             st.info("No invoices found matching the selected filters")
