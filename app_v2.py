@@ -78,40 +78,50 @@ if authentication_status:
   "universe_domain": st.secrets["universe_domain"]
 }
 
-    # ========== CUSTOM CSS ==========
     st.markdown("""
     <style>
+        /* Force light mode and override dark mode */
+        .stApp, .stApp * {
+            color-scheme: light !important;
+        }
+        
         .stApp {
-            background-color: #f0f9ff;
+            background-color: #f0f9ff !important;
         }
         
         .main {
-            background-color: #f0f9ff;
+            background-color: #f0f9ff !important;
         }
         
         [data-testid="stAppViewContainer"] {
-            background-color: #f0f9ff;
+            background-color: #f0f9ff !important;
         }
         
         [data-testid="stHeader"] {
-            background-color: #f0f9ff;
+            background-color: #f0f9ff !important;
         }
+        
+        /* Base text color for all elements */
+        .stApp, .stApp p, .stApp span, .stApp div, .stApp label {
+            color: #0f172a !important;
+        }
+        
         /* Header styling */
         h1 {
-            color: #0c4a6e;
+            color: #0c4a6e !important;
             font-weight: 700;
             padding-bottom: 0.5rem;
         }
         
         h2 {
-            color: #075985;
+            color: #075985 !important;
             font-weight: 600;
             padding-top: 1rem;
             padding-bottom: 0.5rem;
         }
         
         h3 {
-            color: #0369a1;
+            color: #0369a1 !important;
             font-weight: 600;
             font-size: 1.2rem;
         }
@@ -151,7 +161,7 @@ if authentication_status:
         }
         
         .tagline {
-            color: #0369a1;
+            color: #0369a1 !important;
             font-size: 0.95rem;
             font-weight: 500;
             margin-top: 0.25rem;
@@ -159,7 +169,7 @@ if authentication_status:
         
         /* Metric cards with light blue theme */
         [data-testid="stMetric"] {
-            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
             padding: 1.5rem;
             border-radius: 0.75rem;
             box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
@@ -174,12 +184,16 @@ if authentication_status:
         
         [data-testid="stMetricLabel"] {
             font-weight: 600;
-            color: #0369a1;
+            color: #0369a1 !important;
             font-size: 0.9rem;
         }
         
         [data-testid="stMetricValue"] {
-            color: #0c4a6e;
+            color: #0c4a6e !important;
+        }
+        
+        [data-testid="stMetricDelta"] {
+            color: #0f172a !important;
         }
         
         /* Dataframe styling */
@@ -187,6 +201,19 @@ if authentication_status:
             border-radius: 0.75rem;
             overflow: hidden;
             border: 1px solid #bae6fd;
+        }
+        
+        [data-testid="stDataFrame"] table {
+            background-color: #ffffff !important;
+        }
+        
+        [data-testid="stDataFrame"] th {
+            background-color: #e0f2fe !important;
+            color: #0c4a6e !important;
+        }
+        
+        [data-testid="stDataFrame"] td {
+            color: #0f172a !important;
         }
         
         /* Filter section */
@@ -220,18 +247,19 @@ if authentication_status:
             height: 3rem;
             padding: 0 2rem;
             font-weight: 600;
-            color: #0369a1;
+            color: #0369a1 !important;
             border-radius: 0.5rem;
             transition: all 0.2s ease;
+            background-color: transparent;
         }
         
         .stTabs [data-baseweb="tab"]:hover {
-            background-color: #e0f2fe;
-            color: #0c4a6e;
+            background-color: #e0f2fe !important;
+            color: #0c4a6e !important;
         }
         
         .stTabs [aria-selected="true"] {
-            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%) !important;
             color: white !important;
             box-shadow: 0 2px 4px rgba(8, 145, 178, 0.3);
         }
@@ -241,49 +269,178 @@ if authentication_status:
             padding: 0.5rem;
         }
         
+        [data-testid="stCheckbox"] label {
+            color: #0f172a !important;
+        }
+        
+        [data-testid="stCheckbox"] span {
+            color: #0f172a !important;
+        }
+        
         /* Button styling with light blue theme */
         .stButton > button {
             font-weight: 600;
             border-radius: 0.5rem;
             padding: 0.5rem 2rem;
             transition: all 0.3s ease;
-            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
-            color: white;
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%) !important;
+            color: white !important;
             border: none;
         }
         
         .stButton > button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(8, 145, 178, 0.3);
-            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%) !important;
         }
         
         /* Sidebar styling */
         [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+            background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%) !important;
         }
         
-        /* Input fields */
-        .stTextInput input, .stSelectbox select, .stMultiSelect select {
-            border: 1px solid #bae6fd;
+        [data-testid="stSidebar"] * {
+            color: #0f172a !important;
+        }
+        
+        [data-testid="stSidebar"] label {
+            color: #0369a1 !important;
+        }
+        
+        /* Input fields - CRITICAL FIX for filter components */
+        .stTextInput input, .stSelectbox select, .stMultiSelect select, 
+        .stNumberInput input, .stTextArea textarea {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border: 1px solid #bae6fd !important;
             border-radius: 0.5rem;
             transition: all 0.2s ease;
         }
         
-        .stTextInput input:focus, .stSelectbox select:focus, .stMultiSelect select:focus {
-            border-color: #0891b2;
+        .stTextInput input:focus, .stSelectbox select:focus, 
+        .stMultiSelect select:focus, .stNumberInput input:focus,
+        .stTextArea textarea:focus {
+            border-color: #0891b2 !important;
             box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2);
+            background-color: #ffffff !important;
         }
         
-        /* Success/Info messages */
+        /* Select box and multiselect dropdown options */
+        [data-baseweb="select"] > div {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        
+        [data-baseweb="popover"] {
+            background-color: #ffffff !important;
+        }
+        
+        [data-baseweb="menu"] {
+            background-color: #ffffff !important;
+        }
+        
+        [role="option"] {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+        }
+        
+        [role="option"]:hover {
+            background-color: #e0f2fe !important;
+            color: #0c4a6e !important;
+        }
+        
+        /* Labels for all input components */
+        .stTextInput label, .stSelectbox label, .stMultiSelect label,
+        .stNumberInput label, .stTextArea label, .stSlider label,
+        .stDateInput label, .stTimeInput label {
+            color: #0369a1 !important;
+            font-weight: 600;
+        }
+        
+        /* Slider styling */
+        .stSlider [data-baseweb="slider"] {
+            background-color: #e0f2fe;
+        }
+        
+        .stSlider [data-baseweb="slider"] [role="slider"] {
+            background-color: #0891b2 !important;
+        }
+        
+        /* Radio buttons */
+        .stRadio label {
+            color: #0f172a !important;
+        }
+        
+        [data-baseweb="radio"] > div {
+            background-color: #ffffff !important;
+        }
+        
+        /* Date and time inputs */
+        .stDateInput input, .stTimeInput input {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border: 1px solid #bae6fd !important;
+        }
+        
+        /* File uploader */
+        [data-testid="stFileUploader"] {
+            background-color: #ffffff !important;
+        }
+        
+        [data-testid="stFileUploader"] label {
+            color: #0369a1 !important;
+        }
+        
+        [data-testid="stFileUploader"] section {
+            border: 2px dashed #bae6fd !important;
+            background-color: #f0f9ff !important;
+        }
+        
+        /* Success/Info/Warning/Error messages */
         .stSuccess {
-            background-color: #cffafe;
+            background-color: #cffafe !important;
             border-left: 4px solid #06b6d4;
+            color: #0f172a !important;
         }
         
         .stInfo {
-            background-color: #e0f2fe;
+            background-color: #e0f2fe !important;
             border-left: 4px solid #0891b2;
+            color: #0f172a !important;
+        }
+        
+        .stWarning {
+            background-color: #fef3c7 !important;
+            border-left: 4px solid #f59e0b;
+            color: #0f172a !important;
+        }
+        
+        .stError {
+            background-color: #fee2e2 !important;
+            border-left: 4px solid #ef4444;
+            color: #0f172a !important;
+        }
+        
+        /* Expander styling */
+        [data-testid="stExpander"] {
+            background-color: #ffffff !important;
+            border: 1px solid #bae6fd !important;
+            border-radius: 0.5rem;
+        }
+        
+        [data-testid="stExpander"] summary {
+            color: #0369a1 !important;
+            font-weight: 600;
+        }
+        
+        /* Code blocks */
+        .stCodeBlock {
+            background-color: #f8fafc !important;
+            border: 1px solid #bae6fd;
+        }
+        
+        code {
+            color: #0c4a6e !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -1210,4 +1367,5 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
