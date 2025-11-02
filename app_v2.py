@@ -1200,11 +1200,3 @@ if authentication_status:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
-
-
-
-
-
-
-
-
