@@ -292,7 +292,7 @@ if authentication_status:
 
     
     # ========== DATA LOADING ==========
-    @st.cache_data(ttl=300, show_spinner=False)  
+    @st.cache_data(ttl=300, show_spinner=False)
     def load_data():
         """Load and cache data from Google Sheets"""
         scope = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -309,6 +309,7 @@ if authentication_status:
         df_product_inventory_analysis = pd.DataFrame(workbook.worksheet("Product Inventory Consumption - Merged").get_all_records()).drop_duplicates()
         df_product_inventory = pd.DataFrame(workbook.worksheet("Product Inventory").get_all_records()).drop_duplicates()
         return df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory
+
 
     @st.cache_data(ttl=300, show_spinner=False)
     def prepare_data(_df_sales, _df_product, _df_transactions_sumup):
@@ -842,6 +843,9 @@ if authentication_status:
                 df_product_inventory.at[idx, "current_quantity"] = qty
             update_product_inventory(df_product_inventory)
             st.success("Quantities updated successfully!")
+            load_data.clear()
+            st.session_state.inventory_updated = True
+            st.rerun()
 
 
 
@@ -1199,5 +1203,4 @@ if authentication_status:
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
-
             st.info("No invoices found matching the selected filters")
