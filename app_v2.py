@@ -78,7 +78,214 @@ if authentication_status:
   "universe_domain": st.secrets["universe_domain"]
 }
 
-
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #f0f9ff;
+        }
+        
+        .main {
+            background-color: #f0f9ff;
+        }
+        
+        [data-testid="stAppViewContainer"] {
+            background-color: #f0f9ff;
+        }
+        
+        [data-testid="stHeader"] {
+            background-color: #f0f9ff;
+        }
+        /* Header styling */
+        h1 {
+            color: #0c4a6e;
+            font-weight: 700;
+            padding-bottom: 0.5rem;
+        }
+        
+        h2 {
+            color: #075985;
+            font-weight: 600;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+        }
+        
+        h3 {
+            color: #0369a1;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        
+        /* Logo header container */
+        .logo-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1.5rem 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(14, 116, 144, 0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 2px solid #bae6fd;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .logo-image {
+            max-height: 120px;
+            width: auto;
+        }
+        
+        .company-title {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+        
+        .tagline {
+            color: #0369a1;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-top: 0.25rem;
+        }
+        
+        /* Metric cards with light blue theme */
+        [data-testid="stMetric"] {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
+            border: 1px solid #bae6fd;
+            transition: all 0.3s ease;
+        }
+        
+        [data-testid="stMetric"]:hover {
+            box-shadow: 0 4px 12px rgba(14, 116, 144, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        [data-testid="stMetricLabel"] {
+            font-weight: 600;
+            color: #0369a1;
+            font-size: 0.9rem;
+        }
+        
+        [data-testid="stMetricValue"] {
+            color: #0c4a6e;
+        }
+        
+        /* Dataframe styling */
+        [data-testid="stDataFrame"] {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid #bae6fd;
+        }
+        
+        /* Filter section */
+        .filter-container {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
+            margin-bottom: 2rem;
+            border: 1px solid #bae6fd;
+        }
+        
+        /* Divider */
+        hr {
+            margin: 2rem 0;
+            border: none;
+            border-top: 2px solid #bae6fd;
+        }
+        
+        /* Tab styling with light blue */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 1rem;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px rgba(14, 116, 144, 0.12);
+            border: 1px solid #bae6fd;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            height: 3rem;
+            padding: 0 2rem;
+            font-weight: 600;
+            color: #0369a1;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white !important;
+            box-shadow: 0 2px 4px rgba(8, 145, 178, 0.3);
+        }
+        
+        /* Checkbox styling */
+        [data-testid="stCheckbox"] {
+            padding: 0.5rem;
+        }
+        
+        /* Button styling with light blue theme */
+        .stButton > button {
+            font-weight: 600;
+            border-radius: 0.5rem;
+            padding: 0.5rem 2rem;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+            color: white;
+            border: none;
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(8, 145, 178, 0.3);
+            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        }
+        
+        /* Sidebar styling */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+        
+        /* Input fields */
+        .stTextInput input, .stSelectbox select, .stMultiSelect select {
+            border: 1px solid #bae6fd;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .stTextInput input:focus, .stSelectbox select:focus, .stMultiSelect select:focus {
+            border-color: #0891b2;
+            box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2);
+        }
+        
+        /* Success/Info messages */
+        .stSuccess {
+            background-color: #cffafe;
+            border-left: 4px solid #06b6d4;
+        }
+        
+        .stInfo {
+            background-color: #e0f2fe;
+            border-left: 4px solid #0891b2;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     
 
     
@@ -1001,6 +1208,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
