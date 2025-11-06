@@ -330,7 +330,7 @@ if authentication_status:
         
         # Create sales order dataframe
         df_sales_order = df_sales[
-            ["invoice_id", "date", "paid", "customer_name", "country", "city", "source"]
+            ["invoice_id", "date", "paid", "subtotal",  "customer_name", "country", "city", "source"]
         ].drop_duplicates()
         
         # Create invoices metadata dataframe
@@ -1227,6 +1227,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
