@@ -422,6 +422,20 @@ if authentication_status:
             return df[df["source"].isin(sources)]
         return df
 
+    def apply_invoice_status_filter(df, status):
+        if set(status) == {"Paid", "Unpaid"} or not status:
+            return df
+    
+        if "Paid" in status and "Unpaid" not in status:
+            return df[df["paid"] != 0]
+        
+
+        if "Unpaid" in status and "Paid" not in status:
+            return df[df["paid"] == 0]
+        
+
+        return df
+
     # ========== ANALYTICS FUNCTIONS ==========
     def calculate_customer_metrics(df):
         """Calculate customer metrics"""
@@ -432,9 +446,9 @@ if authentication_status:
             df.groupby("customer_name", as_index=False)
             .agg({
                 "id": "nunique",
-                "paid": "sum"
+                "subtotal": "sum"
             })
-            .rename(columns={"id": "num_transactions", "paid": "total_revenue"})
+            .rename(columns={"id": "num_transactions", "subtotal": "total_revenue"})
         )
         
         metrics["AOV"] = metrics["total_revenue"] / metrics["num_transactions"]
@@ -548,8 +562,7 @@ if authentication_status:
         # st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filters")
 
-        col1, col2, col3 = st.columns([2, 2, 2])
-
+        col1, col2, col3, col4 = st.columns([2, 2, 2, 2])
         min_date = df_sales_order_merged["date"].min()
         max_date = df_sales_order_merged["date"].max()
         today = datetime.today()
@@ -583,13 +596,19 @@ if authentication_status:
         with col3:  
             source = st.multiselect("Data Source", ["OneUp", "SumUp"])
 
+        with col4:
+            selected_status = st.multiselect(
+            "Select Invoice Status:",
+            options=["Paid", "Unpaid"])
+
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ========== APPLY FILTERS ==========
         filtered_df = apply_date_filter(df_sales_order_merged, start_date, end_date)
         filtered_df = apply_country_filter(filtered_df, selected_country)
         filtered_df = apply_source_filter(filtered_df, source)
-
+        filtered_df = apply_invoice_status_filter(filtered_df, selected_status)
+        
         # ========== CUSTOMER ANALYSIS ==========
         st.header("👥 Customer Analytics")
 
@@ -1208,6 +1227,7 @@ if authentication_status:
         else:
 
             st.info("No invoices found matching the selected filters")
+
 
 
 
