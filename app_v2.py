@@ -15,6 +15,8 @@ import plotly.graph_objects as go
 import streamlit_authenticator as stauth
 import pickle
 from pathlib import Path
+import smtplib
+from email.message import EmailMessage
 
 
 names = ["Chems"]
@@ -1499,6 +1501,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
