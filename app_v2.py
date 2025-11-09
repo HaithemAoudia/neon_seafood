@@ -1481,8 +1481,7 @@ L'équipe NOEN Seafood
 
                                 st.info(f"📬 Sending complete: {success_count} succeeded, {failure_count} failed.")
 
-                                if failure_count == 0:
-                                    st.balloons()
+ 
 
                                 # Reset form
                                 st.session_state.show_email_form = False
@@ -1501,6 +1500,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
