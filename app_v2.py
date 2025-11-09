@@ -64,6 +64,9 @@ if authentication_status:
     API_EMAIL = st.secrets["API_EMAIL"]
     API_KEY = st.secrets["API_KEY"]
 
+    email_sender = st.secrets["EMAIL_SENDER"]
+    email_password = st.secrets["EMAIL_PASSWORD"]
+
     google_cred = {
   "type": st.secrets["type"],
   "project_id": st.secrets["project_id"],
@@ -403,6 +406,40 @@ if authentication_status:
         else:
             error = f"Error {response.status_code}: {response.text}"
             return error
+
+     def send_email_invoice(file_data, email_sender, email_password, email_reciever, subject, body, invoice_number):
+        try:
+            msg = EmailMessage()
+            msg["Subject"] = subject
+            msg["From"] = email_sender
+            msg["To"] = email_reciever
+            msg.set_content(body)
+            
+            # Add PDF attachment from BytesIO data
+            msg.add_attachment(
+                file_data, 
+                maintype='application', 
+                subtype='pdf',
+                filename=f'invoice {invoice_number}.pdf'
+            )
+            
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(email_sender, email_password)
+                server.send_message(msg)
+            
+            return True, "Email sent successfully!"
+        
+        except smtplib.SMTPAuthenticationError:
+            return False, "❌ Authentication failed. Please check your email and password/app password."
+        
+        except smtplib.SMTPRecipientsRefused:
+            return False, "❌ Recipient email address was refused. Please check the recipient email."
+        
+        except smtplib.SMTPException as e:
+            return False, f"❌ SMTP error occurred: {str(e)}"
+        
+        except Exception as e:
+            return False, f"❌ Unexpected error: {str(e)}"
 
     # ========== FILTER FUNCTIONS ==========
     def apply_date_filter(df, start_date, end_date, date_column='date'):
@@ -1163,71 +1200,305 @@ if authentication_status:
             
             st.markdown("---")
             
-            # ========== DOWNLOAD SECTION ==========
-            st.subheader(f"📥 Download Selected Invoices ({len(st.session_state.selected_invoices)} selected)")
+        st.subheader(f"📥 Download Selected Invoices ({len(st.session_state.selected_invoices)} selected)")
+        st.session_state.selected_invoices
+        if len(st.session_state.selected_invoices) > 0:
+            col1, col2 = st.columns([3, 1])
             
-            if len(st.session_state.selected_invoices) > 0:
-                col1, col2 = st.columns([3, 1])
-                
+            with col1:
+                st.info(f"Ready to download {len(st.session_state.selected_invoices)} invoice(s)")
+            
+            with col2:
+                if st.button("🚀 Download PDFs", type="primary", use_container_width=True):
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    total_invoices = len(st.session_state.selected_invoices)
+                    
+                    # Fetch PDF URLs
+                    status_text.text("🔄 Fetching invoice URLs...")
+                    pdf_urls = []
+                    for i, invoice_id in enumerate(st.session_state.selected_invoices):
+                        pdf_urls.append(print_invoice(invoice_id, 'json'))
+                        progress_bar.progress((i + 1) / total_invoices)
+                    
+                    # Merge PDFs
+                    merger = PdfMerger()
+                    status_text.text("🔄 Merging PDFs...")
+
+                    for i, url in enumerate(pdf_urls, start=1):
+                        try:
+                            response = requests.get(url)
+                            response.raise_for_status()
+                            merger.append(BytesIO(response.content))
+                        except Exception as e:
+                            st.error(f"❌ Failed to load PDF {url}: {e}")
+
+                    # Write merged PDF to in-memory buffer
+                    merged_pdf = BytesIO()
+                    merger.write(merged_pdf)
+                    merger.close()
+                    merged_pdf.seek(0)
+
+                    # Store in session state for email button
+                    st.session_state.merged_pdf_data = merged_pdf.read()
+                    merged_pdf.seek(0)
+
+                    # Encode for new tab view
+                    b64_pdf = base64.b64encode(st.session_state.merged_pdf_data).decode("utf-8")
+
+                    status_text.text("✅ PDFs merged successfully!")
+                    progress_bar.progress(1.0)
+
+                    # Display link to open in new tab
+                    pdf_display_link = f'<a href="data:application/pdf;base64,{b64_pdf}" target="_blank">📂 Open Merged PDF in New Tab</a>'
+                    st.markdown(pdf_display_link, unsafe_allow_html=True)
+                    
+            # Show download and email buttons if PDF exists
+            
+        if 'merged_pdf_data' in st.session_state and st.session_state.merged_pdf_data:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.download_button(
+                    label="⬇️ Download Merged PDF",
+                    data=st.session_state.merged_pdf_data,
+                    file_name="merged_invoices.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            with col2:
+                if st.button("📧 Send to Email", use_container_width=True):
+                    st.session_state.show_email_form = True
+            
+            if st.session_state.get('show_email_form', False):
+                st.markdown("---")
+                st.subheader("📧 Send Invoices via Email")
+
+                # --- Get selected invoices ---
+                selected_invoices_df = filtered_invoices[
+                    filtered_invoices["invoice_id"].isin(st.session_state.selected_invoices)
+                ]
+
+                st.info(f"📊 {len(selected_invoices_df)} invoice(s) will be sent individually")
+
+                # Initialize session state for email customizations
+                if 'email_customizations' not in st.session_state:
+                    st.session_state.email_customizations = {}
+
+                st.markdown("---")
+                st.markdown("#### Review and Edit Each Email")
+
+                import re
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+                # --- Loop through each selected invoice (one email per invoice) ---
+                for _, invoice_row in selected_invoices_df.iterrows():
+                    invoice_id = invoice_row["invoice_id"]
+                    customer_name = invoice_row["customer_name"]
+
+
+                    with st.expander(f"📧 {customer_name} — Invoice #{invoice_id}", expanded=True):
+                        # --- Fetch customer info ---
+                        customer_row = df_customers[df_customers["full_name"] == customer_name]
+                        customer_email_default = (
+                            customer_row["email"].values[0]
+                            if not customer_row.empty else "No email found"
+                        )
+                        customer_country = (
+                            customer_row["country"].values[0].strip().lower()
+                            if not customer_row.empty and "country" in customer_row.columns
+                            else "unknown"
+                        )
+
+                        # --- Determine default language based on country ---
+                        if "france" in customer_country:
+                            default_language = "French"
+                        elif "netherlands" in customer_country or "belgium" in customer_country:
+                            default_language = "Dutch"
+                        else:
+                            default_language = "Dutch"  # fallback
+
+                        # --- Dynamic language selector per invoice ---
+                        language_key = f"language_{customer_name}_{invoice_id}"
+                        language_selected = st.selectbox(
+                            "Select Language",
+                            ["Dutch", "French"],
+                        )
+
+                        # --- Invoice details ---
+                        total_amount = invoice_row["amount"]
+                        due_date = invoice_row["due_date"]
+
+                        # --- Generate default subject/body dynamically based on language ---
+                        if language_selected == "Dutch":
+                            default_subject = f"Factuur {invoice_id} - NOEN Seafood"
+                            default_body = body = f"""
+                            
+Beste {customer_name},,
+
+Hartelijk dank voor uw samenwerking en bestelling. We stellen dit zeer op prijs.
+
+In de bijlage vindt u de bijbehorende factuur met nummer {invoice_id}.
+Het totaalbedrag is €{total_amount:.2f}. We verzoeken u vriendelijk om deze te voldoen vóór {due_date}, onder vermelding van het factuurnummer.
+Mocht u vragen hebben over de factuur, of als er iets onduidelijk is, neem dan gerust contact met ons op. 
+
+We kijken graag met u mee en helpen u direct verder.
+
+We zien uw betaling tegemoet.
+
+Met vriendelijke groet,
+
+Het team van NOEN Seafood
+                            """
+                        else:
+                            default_subject = f"Facture {invoice_id} - NOEN Seafood"
+                            default_body = f"""
+Cher/Chère {customer_name},
+
+Nous vous remercions sincèrement pour votre collaboration et votre commande. Nous apprécions grandement la confiance que vous nous accordez.
+
+Veuillez trouver ci-joint la facture correspondante, portant le numéro {invoice_id}.
+
+Le montant total s'élève à €{total_amount:.2f}. Nous vous prions aimablement de bien vouloir effectuer le règlement avant le {due_date}, en rappelant le numéro de facture en référence.
+
+Si vous avez la moindre question concernant cette facture, ou si un point ne vous semble pas clair, n'hésitez surtout pas à nous contacter. Nous serons ravis d'examiner cela avec vous et de vous aider.
+
+Nous vous remercions par avance pour votre règlement.
+
+Cordialement,
+
+L'équipe NOEN Seafood
+                                """
+
+
+                        # --- Unique keys for this invoice (avoid stale state) ---
+                        email_key = f"email_{customer_name}_{invoice_id}"
+                        subject_key = f"subject_{customer_name}_{invoice_id}_{language_selected}"
+                        body_key = f"body_{customer_name}_{invoice_id}_{language_selected}"
+
+                        # --- Editable email fields (reset when language changes) ---
+                        customer_email = st.text_input(
+                            "Recipient Email",
+                            value=customer_email_default,
+                            key=email_key,
+                            help="Edit the email address if needed"
+                        )
+
+                        is_valid_email = bool(re.match(email_pattern, customer_email))
+                        if not is_valid_email:
+                            st.error("❌ Please enter a valid email address")
+
+                        email_subject = st.text_input("Subject", value=default_subject, key=subject_key)
+                        email_body = st.text_area("Message", value=default_body, height=200, key=body_key)
+
+                        # --- Save this invoice's customization ---
+                        st.session_state.email_customizations[invoice_id] = {
+                            "customer_name": customer_name,
+                            "email": customer_email,
+                            "subject": email_subject,
+                            "body": email_body,
+                            "language": language_selected,
+                            "is_valid": is_valid_email,
+                        }
+
+                        st.markdown(f"**Attachment:** Invoice #{invoice_id}")
+                        st.markdown("---")
+
+                # --- Action buttons ---
+                st.markdown("#### 3. Send Emails")
+
+                all_valid = all(cust["is_valid"] for cust in st.session_state.email_customizations.values())
+
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.info(f"Ready to download {len(st.session_state.selected_invoices)} invoice(s)")
+                    if st.button("✅ Send All Emails", type="primary", use_container_width=True, disabled=not all_valid):
+                        if not all_valid:
+                            st.error("❌ Please fix invalid email addresses before sending")
+                        else:
+                            st.session_state.confirm_send = True
+                            st.rerun()
+
                 
                 with col2:
-                    if st.button("🚀 Download PDFs", type="primary", use_container_width=True):
-                        progress_bar = st.progress(0)
-                        status_text = st.empty()
+                    if st.button("❌ Cancel", use_container_width=True):
+                        st.session_state.show_email_form = False
+                        st.session_state.confirm_send = False
+                        st.session_state.email_customizations = {}
+                        st.rerun()
 
-                        total_invoices = len(st.session_state.selected_invoices)
-                        
-                        # Fetch PDF URLs
-                        status_text.text("🔄 Fetching invoice URLs...")
-                        pdf_urls = []
-                        for i, invoice_id in enumerate(st.session_state.selected_invoices):
-                            pdf_urls.append(print_invoice(invoice_id, 'json'))
-                            progress_bar.progress((i + 1) / total_invoices)
-                        
-                        # Merge PDFs
-                        merger = PdfMerger()
-                        status_text.text("🔄 Merging PDFs...")
+                if st.session_state.get("confirm_send", False):
+                    st.markdown("---")
+                    st.warning("⚠️ Are you sure you want to send all selected invoices?")
 
-                        for i, url in enumerate(pdf_urls, start=1):
-                            try:
-                                response = requests.get(url)
-                                response.raise_for_status()
-                                merger.append(BytesIO(response.content))
-                            except Exception as e:
-                                st.error(f"❌ Failed to load PDF {url}: {e}")
+                    col_confirm1, col_confirm2 = st.columns(2)
+                    with col_confirm1:
+                        if st.button("✅ Yes, Send Now", type="primary", use_container_width=True, key="confirm_send_all"):
+                            # Ensure sender credentials are available
+                            if not email_sender or not email_password:
+                                st.error("❌ Please configure email sender credentials in the sidebar first.")
+                            else:
+                                success_count = 0
+                                failure_count = 0
 
-                        # Write merged PDF to in-memory buffer
-                        merged_pdf = BytesIO()
-                        merger.write(merged_pdf)
-                        merger.close()
-                        merged_pdf.seek(0)
+                                # Loop over each invoice customization and send it
+                                for invoice_id, details in st.session_state.email_customizations.items():
+                                    try:
+                                        # Generate PDF for this invoice
+                                        st.write(f"Handling Invoice {invoice_id}")
+                                        pdf_url = print_invoice(invoice_id, 'json')
+                                        response = requests.get(pdf_url)
+                                        response.raise_for_status()
 
-                        # Encode for new tab view
-                        b64_pdf = base64.b64encode(merged_pdf.read()).decode("utf-8")
-                        merged_pdf.seek(0)
+                                        # Wrap in BytesIO for email attachment
+                                        pdf_data = BytesIO(response.content).read()
 
-                        status_text.text("✅ PDFs merged successfully!")
-                        progress_bar.progress(1.0)
+                                        # Send the email
+                                        with st.spinner(f"📧 Sending invoice #{invoice_id} to {details['email']}..."):
+                                            success, message = send_email_invoice(
+                                                file_data=pdf_data,
+                                                email_sender=email_sender,
+                                                email_password=email_password,
+                                                email_reciever=details["email"],
+                                                subject=details["subject"],
+                                                body=details["body"], 
+                                                invoice_number=invoice_id
+                                            )
 
-                        # Display link to open in new tab
-                        pdf_display_link = f'<a href="data:application/pdf;base64,{b64_pdf}" target="_blank">📂 Open Merged PDF in New Tab</a>'
-                        st.markdown(pdf_display_link, unsafe_allow_html=True)
+                                        if success:
+                                            st.success(f"✅ Invoice #{invoice_id} sent to {details['email']}")
+                                            success_count += 1
+                                        else:
+                                            st.error(f"❌ Failed to send invoice #{invoice_id}: {message}")
+                                            failure_count += 1
 
-                        # Also allow download
-                        st.download_button(
-                            label="⬇️ Download Merged PDF",
-                            data=merged_pdf,
-                            file_name="merged_invoices.pdf",
-                            mime="application/pdf"
-                        )
+                                    except Exception as e:
+                                        st.error(f"❌ Error sending invoice #{invoice_id}: {e}")
+                                        failure_count += 1
+
+                                st.info(f"📬 Sending complete: {success_count} succeeded, {failure_count} failed.")
+
+                                if failure_count == 0:
+                                    st.balloons()
+
+                                # Reset form
+                                st.session_state.show_email_form = False
+                                st.session_state.confirm_send = False
+                                st.session_state.email_customizations = {}
+                                
+
+                    with col_confirm2:
+                        if st.button("❌ No, Cancel", use_container_width=True, key="cancel_send_all"):
+                            st.session_state.confirm_send = False
+                            st.rerun()
+
+
+
             else:
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
-
             st.info("No invoices found matching the selected filters")
-
 
 
 
