@@ -324,6 +324,7 @@ if authentication_status:
         # Convert data types
         df_sales["date"] = pd.to_datetime(df_sales["date"], errors="coerce")
         df_sales["paid"] = pd.to_numeric(df_sales["paid"] - df_sales["tax_amount"], errors="coerce")
+        df_sales["subtotal"] = pd.to_numeric(df_sales["subtotal"], errors="coerce")
         df_sales["quantity"] = pd.to_numeric(df_sales["quantity"], errors="coerce")
         df_sales["unit_price"] = pd.to_numeric(df_sales["unit_price"], errors="coerce")
         df_sales["total_order_line"] = pd.to_numeric(df_sales["total_order_line"], errors="coerce")
@@ -335,7 +336,7 @@ if authentication_status:
         
         # Create sales order dataframe
         df_sales_order = df_sales[
-            ["invoice_id", "date", "paid", "subtotal",  "customer_name", "country", "city", "source"]
+            ["invoice_id", "date", "paid", "total_order_line", "item_id", "customer_name", "country", "city", "source"]
         ].drop_duplicates()
         
         # Create invoices metadata dataframe
@@ -345,8 +346,12 @@ if authentication_status:
         
         # SumUp sales
         df_sales_sumup = df_transactions_sumup[
-            ["id", "date", "paid", "customer_name", "country", "city", "source"]
+            ["id", "date", "total_price", "customer_name", "country", "city", "source"]
         ].drop_duplicates()
+
+        df_sales_sumup.rename(columns={"total_price": "total_order_line"}, inplace=True)
+
+        df_sales_sumup["item_id"] = None
         
         # Merge sales orders
         df_sales_order_merged = pd.concat([
@@ -354,19 +359,21 @@ if authentication_status:
             df_sales_sumup
         ], ignore_index=True)
         
+        df_sales_order_merged = pd.merge(df_sales_order_merged, df_product[['id','item_family_name']],
+                                         left_on="item_id", right_on="id")
+        
+        
         # Prepare product sales data
         df_product_sales_oneup = df_sales[
-            ["invoice_id", "item_id", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
+            ["invoice_id", "customer_name", "item_id", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
         ]
 
         # Merge One up Sales with One up Products to get product name based on id
         df_product_sales_oneup["product_name"] = df_product_sales_oneup["item_id"].map(df_product.set_index("id")["name"])
 
         
-        
-        
         df_product_sales_sumup = df_transactions_sumup[
-            ["id", "product_name", "country", "timestamp", "price", "total_price", "quantity", "source"]
+            ["id", "customer_name", "product_name", "country", "timestamp", "price", "total_price", "quantity", "source"]
         ].rename(columns={
             "timestamp": "date",
             "price": "unit_price",
@@ -375,7 +382,7 @@ if authentication_status:
         
         df_product_sales_sumup["item_id"] = 0
         df_product_sales_sumup = df_product_sales_sumup[
-            ["id", "item_id", "product_name", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
+            ["id", "customer_name", "item_id", "product_name", "country", "date", "unit_price", "total_order_line", "quantity", "source"]
         ]
         
         df_product_sales_merged = pd.concat([
@@ -386,6 +393,12 @@ if authentication_status:
         df_product_sales_merged["date"] = pd.to_datetime(df_product_sales_merged["date"])
         
         return df_sales_order_merged, df_invoices, df_product_sales_merged, df_product
+
+    
+    df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory  = load_data()
+    df_sales_order_merged, df_invoices, df_product_sales_merged, df_product_clean = prepare_data(
+        df_sales, df_product, df_transactions_sumup
+    )
 
     
     df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory  = load_data()
@@ -475,19 +488,27 @@ if authentication_status:
 
         return df
 
+    def apply_product_family_filter(df, family):
+            if len(family) == 0:
+                return df
+            else:
+                return df[df["item_family_name"].isin(family)]
+
     # ========== ANALYTICS FUNCTIONS ==========
     def calculate_customer_metrics(df):
         """Calculate customer metrics"""
         if len(df) == 0:
             return pd.DataFrame(columns=["customer_name", "num_transactions", "total_revenue", "AOV", "transaction_frequency"])
         
+        st.write(df)
+        
         metrics = (
-            df.groupby("customer_name", as_index=False)
+            df.groupby(["customer_name", "item_id"], as_index=False)
             .agg({
-                "id": "nunique",
-                "subtotal": "sum"
+                "id_x": "nunique",
+                "total_order_line": "sum"
             })
-            .rename(columns={"id": "num_transactions", "subtotal": "total_revenue"})
+            .rename(columns={"id_x": "num_transactions", "total_order_line": "total_revenue"})
         )
         
         metrics["AOV"] = metrics["total_revenue"] / metrics["num_transactions"]
@@ -498,15 +519,18 @@ if authentication_status:
     def calculate_product_metrics(df, df_product):
         """Calculate product metrics"""
         if len(df) == 0:
-            return pd.DataFrame(columns=["product_name", "quantity", "revenue", "gross_margin", "margin_%", "margin_contribution_%"])
+            return pd.DataFrame(columns=["product_name", "item_family_name", "quantity", "revenue", "gross_margin", "margin_%", "margin_contribution_%"])
         
         df_merged = df.merge(
-            df_product[["id", "purchase_price"]],
+            df_product[["id", "purchase_price", "item_family_name"]],
             how="left",
             left_on="item_id",
             right_on="id"
         )
 
+        st.write(df_merged)
+
+        
         # df_merged = df_merged[df_merged["purchase_price"] > 0]
         df_merged = df_merged[df_merged["product_name"] != '']
         
@@ -514,7 +538,7 @@ if authentication_status:
         df_merged["total_gross_margin"] = df_merged["total_order_line"] - df_merged["total_cost"]
       
         product_metrics = (
-            df_merged.groupby(["product_name"], as_index=False)
+            df_merged.groupby(["product_name", "item_family_name", "customer_name"], as_index=False)
             .agg({
                 "quantity": "sum",
                 "total_order_line": "sum",
@@ -522,6 +546,7 @@ if authentication_status:
             })
             .rename(columns={"total_order_line": "revenue"})
         )
+
         
         product_metrics["margin_%"] = (product_metrics["total_gross_margin"] / product_metrics["revenue"]) * 100
         product_metrics["margin_contribution_%"] = (
@@ -601,30 +626,45 @@ if authentication_status:
         # st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filters")
 
-        col1, col2, col3, col4 = st.columns([2, 2, 2, 2])
+        col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
         min_date = df_sales_order_merged["date"].min()
         max_date = df_sales_order_merged["date"].max()
         today = datetime.today()
 
         with col1:
-            date_options = ["Past Month", "Last 3 Months", "Last 6 Months", "YTD", "Custom Range"]
+            date_options = ["YTD","Past Month", "Q1", "Q2", "Q3", "Q4", "Custom Range"]
             selected_range = st.selectbox("📅 Date Range", date_options, index=0)
 
-            if selected_range == "Past Month":
-                start_date = max_date - pd.DateOffset(months=1)
-                end_date = max_date
-            elif selected_range == "Last 3 Months":
-                start_date = max_date - pd.DateOffset(months=3)
-                end_date = max_date
-            elif selected_range == "Last 6 Months":
-                start_date = max_date - pd.DateOffset(months=6)
-                end_date = max_date
-            elif selected_range == "YTD":
+            if selected_range == "YTD":
                 start_date = datetime(max_date.year, 1, 1)
                 end_date = max_date
+            
+            
+            elif selected_range == "Past Month":
+                start_date = max_date - pd.DateOffset(months=1)
+                end_date = max_date
+                
+
+            elif selected_range == "Q1":
+                start_date = datetime(max_date.year, 1, 1)
+                end_date = datetime(max_date.year, 3, 31)
+
+            elif selected_range == "Q2":
+                start_date = datetime(max_date.year, 4, 1)
+                end_date = datetime(max_date.year, 6, 30)
+
+            elif selected_range == "Q3":
+                start_date = datetime(max_date.year, 7, 1)
+                end_date = datetime(max_date.year, 9, 30)
+
+            elif selected_range == "Q4":
+                start_date = datetime(max_date.year, 10, 1)
+                end_date = datetime(max_date.year, 12, 31)
+
             elif selected_range == "Custom Range":
                 start_date = st.date_input("📅 Start Date", value=min_date, min_value=min_date, max_value=max_date)
                 end_date = st.date_input("📅 End Date", value=max_date, min_value=min_date, max_value=max_date)
+
             else:
                 start_date, end_date = min_date, max_date
 
@@ -640,6 +680,15 @@ if authentication_status:
             "Select Invoice Status:",
             options=["Paid", "Unpaid"])
 
+        with col5:
+            selected_product_family = st.multiselect(
+            "Product Family", 
+            options=[
+    "Filets", "Inktvissen en Celaphoden", "Hele vis", "Snacks",
+    "Overig", "PD Garnalen", "HOSO", "Mollusken", "Zeevruchten", "Groente",
+    "Steaks", "PUD Cocktail", "Party Garnalen", "Surimi", "HLSO"
+])
+
         st.markdown('</div>', unsafe_allow_html=True)
 
         # ========== APPLY FILTERS ==========
@@ -647,6 +696,7 @@ if authentication_status:
         filtered_df = apply_country_filter(filtered_df, selected_country)
         filtered_df = apply_source_filter(filtered_df, source)
         filtered_df = apply_invoice_status_filter(filtered_df, selected_status)
+        filtered_df = apply_product_family_filter(filtered_df, selected_product_family)
         
         # ========== CUSTOMER ANALYSIS ==========
         st.header("👥 Customer Analytics")
@@ -738,6 +788,7 @@ if authentication_status:
 
         # Calculate product metrics using cached function
         product_metrics = calculate_product_metrics(filtered_sales, df_product_clean)
+        product_metrics = apply_product_family_filter(product_metrics, selected_product_family)
         # Top products
         if not product_metrics.empty:
             top_units = product_metrics.nlargest(10, "quantity")
@@ -811,17 +862,59 @@ if authentication_status:
                     .configure(background='#f0f9ff;')
                 )
                 st.altair_chart(chart_prod_revenue, use_container_width=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("🏅 Top 10 Products by Gross Margin")
+                chart_margin = (
+                    alt.Chart(top_margin)
+                    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                    .encode(
+                        x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
+                        y=alt.Y("product_name:N", sort="-x", title=None),
+                        color=alt.value("#f59e0b"),
+                        tooltip=[
+                            alt.Tooltip("product_name:N", title="Product"),
+                            alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format=".2f"),
+                            alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
+                            alt.Tooltip("revenue:Q", title="Revenue", format=".2f")
+                        ]
+                    )
+                    .properties(height=400)
+                    .configure(background='#f0f9ff;')
+                )
+                st.altair_chart(chart_margin, use_container_width=True)
 
-            st.subheader("🏅 Top 10 Products by Gross Margin")
+            with col2:
+                st.subheader("📦 Gross Margin by Product Family")
+                chart_margin = (
+                    alt.Chart(top_margin)
+                    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
+                    .encode(
+                        x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
+                        y=alt.Y("item_family_name:N", sort="-x", title=None),
+                        color=alt.value("#f59e0b"),
+                        tooltip=[
+                            alt.Tooltip("item_family_name:N", title="Product"),
+                            alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format=".2f"),
+                            alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
+                            alt.Tooltip("revenue:Q", title="Revenue", format=".2f")
+                        ]
+                    )
+                    .properties(height=400)
+                    .configure(background='#f0f9ff;')
+                )
+                st.altair_chart(chart_margin, use_container_width=True)
+
+            st.subheader("Gross Margin by Customer")
             chart_margin = (
                 alt.Chart(top_margin)
                 .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
                 .encode(
                     x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
-                    y=alt.Y("product_name:N", sort="-x", title=None),
-                    color=alt.value("#f59e0b"),
+                    y=alt.Y("customer_name:N", sort="-x", title=None),
+                    color=alt.value("#360bf5"),
                     tooltip=[
-                        alt.Tooltip("product_name:N", title="Product"),
+                        alt.Tooltip("customer_name:N", title="Product"),
                         alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format=".2f"),
                         alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
                         alt.Tooltip("revenue:Q", title="Revenue", format=".2f")
@@ -1500,6 +1593,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
