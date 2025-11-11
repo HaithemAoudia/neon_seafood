@@ -400,12 +400,6 @@ if authentication_status:
         df_sales, df_product, df_transactions_sumup
     )
 
-    
-    df_sales, df_product, df_customers, df_transactions_sumup, df_product_inventory_analysis, df_product_inventory  = load_data()
-    df_sales_order_merged, df_invoices, df_product_sales_merged, df_product_clean = prepare_data(
-        df_sales, df_product, df_transactions_sumup
-    )
-
     # ========== HELPER FUNCTIONS ==========
     def print_invoice(invoice_id, format):
         url = f"https://api.oneup.com/v1/invoices/{invoice_id}/print.{format}"
@@ -1593,6 +1587,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
