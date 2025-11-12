@@ -542,6 +542,7 @@ if authentication_status:
 
         
         product_metrics["margin_%"] = (product_metrics["total_gross_margin"] / product_metrics["revenue"]) * 100
+        product_metrics = product_metrics[product_metrics["margin_%"] > 0]
         product_metrics["margin_contribution_%"] = (
             (product_metrics["total_gross_margin"] / product_metrics["total_gross_margin"].sum()) * 100
         )
@@ -880,7 +881,7 @@ if authentication_status:
             with col2:
                 st.subheader("📦 Gross Margin by Product Family")
                 chart_margin = (
-                    alt.Chart(top_margin)
+                    alt.Chart(product_metrics)
                     .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
                     .encode(
                         x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
@@ -898,7 +899,7 @@ if authentication_status:
                 )
                 st.altair_chart(chart_margin, use_container_width=True)
 
-            st.subheader("Gross Margin by Customer")
+            st.subheader("Top 10 Gross Margin by Customer")
             chart_margin = (
                 alt.Chart(top_margin)
                 .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
@@ -1586,6 +1587,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
