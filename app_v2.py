@@ -615,7 +615,7 @@ if authentication_status:
     # ========================================
     # TAB 1: ANALYTICS DASHBOARD
     # ========================================
-     with tab1:
+    with tab1:
         # ========== FILTERS ==========
         # st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filters")
@@ -1641,6 +1641,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
