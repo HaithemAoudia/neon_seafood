@@ -954,7 +954,7 @@ if authentication_status:
                 )
                 st.altair_chart(chart_margin, use_container_width=True)
 
-            st.subheader("Gross Margin by Customer")
+            st.subheader("Top 10 Customers by Gross Margin")
             chart_margin = (
                 alt.Chart(top_customer)
                 .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
@@ -1641,6 +1641,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
