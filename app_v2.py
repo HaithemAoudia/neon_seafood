@@ -615,12 +615,13 @@ if authentication_status:
     # ========================================
     # TAB 1: ANALYTICS DASHBOARD
     # ========================================
-    with tab1:
+     with tab1:
         # ========== FILTERS ==========
         # st.markdown('<div class="filter-container">', unsafe_allow_html=True)
         st.subheader("🔍 Filters")
 
         col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 2])
+
         min_date = df_sales_order_merged["date"].min()
         max_date = df_sales_order_merged["date"].max()
         today = datetime.today()
@@ -668,12 +669,11 @@ if authentication_status:
 
         with col3:  
             source = st.multiselect("Data Source", ["OneUp", "SumUp"])
-
+        
         with col4:
             selected_status = st.multiselect(
             "Select Invoice Status:",
             options=["Paid", "Unpaid"])
-
         with col5:
             selected_product_family = st.multiselect(
             "Product Family", 
@@ -697,10 +697,32 @@ if authentication_status:
 
         # Calculate customer metrics using cached function
         metrics = calculate_customer_metrics(filtered_df)
+
         # Top customers
         if not metrics.empty:
-            top_revenue = metrics.nlargest(10, "total_revenue")
-            top_transactions = metrics.nlargest(10, "num_transactions")
+            # top_revenue = metrics.nlargest(10, "total_revenue")
+            #Define Top 10 Using Group By and desc on Customer
+            
+
+
+            top_revenue = metrics.groupby('customer_name').agg({
+                        'total_revenue': 'sum',
+                        'num_transactions': 'sum',
+                        'AOV': 'mean'
+                    }).nlargest(10, 'total_revenue').reset_index()
+
+
+
+
+
+
+            top_transactions = metrics.groupby('customer_name').agg({
+                        'total_revenue': 'sum',
+                        'num_transactions': 'sum',
+                        'AOV': 'mean'
+                    }).nlargest(10, 'num_transactions').reset_index()
+            
+
 
             # KPI Cards
             col1, col2, col3, col4 = st.columns([0.6, 1, 0.5, 1])
@@ -709,9 +731,9 @@ if authentication_status:
                 st.metric("💰 Total Revenue", f"€{metrics['total_revenue'].sum():,.0f}")
 
             with col2:
-                top_customer = top_revenue.iloc[0]
-                name = top_customer["customer_name"]
-                st.metric("🏆 Top Customer", name, f"€{top_customer['total_revenue']:,.0f}", width="content")
+                name = top_revenue.iloc[0]['customer_name']
+                total_rev = top_revenue.iloc[0]['total_revenue']
+                st.metric("🏆 Top Customer", name, f"€{total_rev:,.0f}")
             with col3:
                 st.metric("📦 Average Order Value", f"€{metrics['AOV'].mean():,.0f}")
             with col4:
@@ -774,22 +796,56 @@ if authentication_status:
 
         # ========== PRODUCT ANALYSIS ==========
         st.header("📦 Product Performance")
-
         # Apply filters to product data
         filtered_sales = apply_date_filter(df_product_sales_merged, start_date, end_date)
         filtered_sales = apply_country_filter(filtered_sales, selected_country)
         filtered_sales = apply_source_filter(filtered_sales, source)
+        
 
         # Calculate product metrics using cached function
         product_metrics = calculate_product_metrics(filtered_sales, df_product_clean)
         product_metrics = apply_product_family_filter(product_metrics, selected_product_family)
+        product_metrics = product_metrics[product_metrics["margin_%"] > 0]
         # Top products
         if not product_metrics.empty:
-            top_units = product_metrics.nlargest(10, "quantity")
-            top_product_revenue = product_metrics.nlargest(10, "revenue")
+            # top_units = product_metrics.nlargest(10, "quantity")
+            top_units = product_metrics.groupby(['product_name', 'item_family_name']).agg({
+                        'quantity': 'sum',
+                        'revenue': 'sum',
+                        'total_gross_margin': 'sum', 
+                        'margin_%': 'mean', 
+                        'margin_contribution_%': 'mean'
+                    }).nlargest(10, 'quantity').reset_index()
+      
+   
+            top_product_revenue = product_metrics.groupby(['product_name', 'item_family_name']).agg({
+                        'quantity': 'sum',
+                        'revenue': 'sum',
+                        'total_gross_margin': 'sum', 
+                        'margin_%': 'mean', 
+                        'margin_contribution_%': 'mean'
+                    }).nlargest(10, 'revenue').reset_index()
             # top_margin = product_metrics.nlargest(10, "total_gross_margin")
-            top_margin = product_metrics[product_metrics["margin_%"] != 100].nlargest(10, "total_gross_margin")
+            top_margin = product_metrics[product_metrics["margin_%"] != 100].groupby(['product_name', 'item_family_name']).agg({
+                        'quantity': 'sum',
+                        'revenue': 'sum',
+                        'total_gross_margin': 'sum', 
+                        'margin_%': 'mean', 
+                        'margin_contribution_%': 'mean'
+                    }).nlargest(10, 'revenue').reset_index()
+            
 
+            top_customer = product_metrics[product_metrics["margin_%"] != 100].groupby(['customer_name']).agg({
+                        'quantity': 'sum',
+                        'revenue': 'sum',
+                        'total_gross_margin': 'sum', 
+                        'margin_%': 'mean', 
+                        'margin_contribution_%': 'mean'
+                    }).nlargest(10, 'revenue').reset_index()
+            
+            
+            # product_metrics[product_metrics["margin_%"] != 100].nlargest(10, "total_gross_margin", )
+   
             # Product KPIs
             col1, col2, col3, col4 = st.columns([0.3, 1, 0.3, 0.3])
 
@@ -856,7 +912,9 @@ if authentication_status:
                     .configure(background='#f0f9ff;')
                 )
                 st.altair_chart(chart_prod_revenue, use_container_width=True)
+
             col1, col2 = st.columns(2)
+
             with col1:
                 st.subheader("🏅 Top 10 Products by Gross Margin")
                 chart_margin = (
@@ -889,9 +947,6 @@ if authentication_status:
                         color=alt.value("#f59e0b"),
                         tooltip=[
                             alt.Tooltip("item_family_name:N", title="Product"),
-                            alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format=".2f"),
-                            alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
-                            alt.Tooltip("revenue:Q", title="Revenue", format=".2f")
                         ]
                     )
                     .properties(height=400)
@@ -899,9 +954,9 @@ if authentication_status:
                 )
                 st.altair_chart(chart_margin, use_container_width=True)
 
-            st.subheader("Top 10 Gross Margin by Customer")
+            st.subheader("Gross Margin by Customer")
             chart_margin = (
-                alt.Chart(top_margin)
+                alt.Chart(top_customer)
                 .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
                 .encode(
                     x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
@@ -930,7 +985,6 @@ if authentication_status:
     - **Total Cost** = Purchase Price × Quantity  
     - **Total Gross Margin** = Total Order Line (Product Revenue *excl. VAT*) − Total Cost  
     """)
-
 
 
 
@@ -1587,6 +1641,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
