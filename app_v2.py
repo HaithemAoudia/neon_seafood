@@ -494,7 +494,6 @@ if authentication_status:
         if len(df) == 0:
             return pd.DataFrame(columns=["customer_name", "num_transactions", "total_revenue", "AOV", "transaction_frequency"])
         
-        st.write(df)
         
         metrics = (
             df.groupby(["customer_name", "item_id"], as_index=False)
@@ -522,7 +521,7 @@ if authentication_status:
             right_on="id"
         )
 
-        st.write(df_merged)
+    
 
         
         # df_merged = df_merged[df_merged["purchase_price"] > 0]
@@ -1587,6 +1586,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
