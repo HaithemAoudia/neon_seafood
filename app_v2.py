@@ -842,6 +842,14 @@ if authentication_status:
                         'margin_%': 'mean', 
                         'margin_contribution_%': 'mean'
                     }).nlargest(10, 'revenue').reset_index()
+
+            product_family_margins = product_metrics[product_metrics["margin_%"] != 100].groupby(['item_family_name']).agg({
+                        'quantity': 'sum',
+                        'revenue': 'sum',
+                        'total_gross_margin': 'sum', 
+                        'margin_%': 'mean', 
+                        'margin_contribution_%': 'mean'
+                    }).reset_index()
             
             
             # product_metrics[product_metrics["margin_%"] != 100].nlargest(10, "total_gross_margin", )
@@ -939,7 +947,7 @@ if authentication_status:
             with col2:
                 st.subheader("📦 Gross Margin by Product Family")
                 chart_margin = (
-                    alt.Chart(product_metrics)
+                    alt.Chart(product_family_margins)
                     .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4)
                     .encode(
                         x=alt.X("total_gross_margin:Q", title="Gross Margin (€)", axis=alt.Axis(format=".0f")),
@@ -947,6 +955,9 @@ if authentication_status:
                         color=alt.value("#f59e0b"),
                         tooltip=[
                             alt.Tooltip("item_family_name:N", title="Product"),
+                            alt.Tooltip("total_gross_margin:Q", title="Total Gross Margin", format=".2f"),
+                            alt.Tooltip("margin_%:Q", title="Margin %", format=".1f"),
+                            alt.Tooltip("revenue:Q", title="Revenue", format=".2f")
                         ]
                     )
                     .properties(height=400)
@@ -1641,6 +1652,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
