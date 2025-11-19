@@ -1184,8 +1184,8 @@ if authentication_status:
                 inv_start_date = datetime(max_date.year, 1, 1)
                 inv_end_date = max_date
             elif selected_range == "Custom Range":
-                inv_start_date = st.date_input("📅 Start Date", value=min_date, min_value=min_date, max_value=max_date)
-                inv_end_date = st.date_input("📅 End Date", value=max_date, min_value=min_date, max_value=max_date)
+                inv_start_date = st.date_input("📅 Start Date ", value=min_date, min_value=min_date, max_value=max_date)
+                inv_end_date = st.date_input("📅 End Date ", value=max_date, min_value=min_date, max_value=max_date)
             else:
                 inv_start_date, inv_end_date = min_date, max_date
 
@@ -1652,6 +1652,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
