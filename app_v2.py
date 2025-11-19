@@ -1280,7 +1280,7 @@ if authentication_status:
         # ========== INVOICE TABLE WITH CHECKBOXES ==========
         if len(filtered_invoices) > 0:
             st.markdown("##### Select invoices to download:")
-            
+            filtered_invoices = filtered_invoices.sort_values(by='date', ascending= False)
             # Use pagination for large datasets
             items_per_page = 50
             total_pages = (len(filtered_invoices) - 1) // items_per_page + 1
@@ -1652,6 +1652,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
