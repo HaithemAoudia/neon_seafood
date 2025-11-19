@@ -416,6 +416,34 @@ if authentication_status:
             error = f"Error {response.status_code}: {response.text}"
             return error
 
+
+    def trigger_manual_refresh():
+        token = st.secrets['GITHUB_API']              
+        owner = "haithemaoudia"
+        repo = "noen_data_pipeline"
+        workflow = "main.yml"                
+        branch = "main"                        
+
+        url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{workflow}/dispatches"
+
+        payload = {
+            "ref": branch,
+        }
+
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+
+        if response.status_code == 204:
+            print("Workflow dispatched successfully!")
+        else:
+            print("Failed to trigger workflow:", response.status_code, response.text)
+
     def send_email_invoice(file_data, email_sender, email_password, email_reciever, subject, body, invoice_number):
         try:
             msg = EmailMessage()
@@ -608,6 +636,11 @@ if authentication_status:
     # ========== TABS ==========
     if "active_tab" not in st.session_state:
         st.session_state.active_tab = "📈 Analytics" 
+
+    manual_refresh = st.button("Trigger Data Refresh")
+
+    if manual_refresh:
+        trigger_manual_refresh()
 
 
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Analytics", "📦 Inventory", "🚀 Forecast", "🧾 Invoice Manager"])
@@ -1652,6 +1685,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
