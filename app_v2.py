@@ -496,7 +496,7 @@ if authentication_status:
         
         
         metrics = (
-            df.groupby(["customer_name", "item_id"], as_index=False)
+            df.groupby(["customer_name"], as_index=False)
             .agg({
                 "id_x": "nunique",
                 "total_order_line": "sum"
@@ -1641,6 +1641,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
