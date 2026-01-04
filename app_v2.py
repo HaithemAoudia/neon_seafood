@@ -63,24 +63,24 @@ if authentication_status:
     )
 
         # ========== API CREDENTIALS ==========
-    API_EMAIL = st.secrets["API_EMAIL"]
-    API_KEY = st.secrets["API_KEY"]
+    API_EMAIL = os.environ.get("API_EMAIL")
+    API_KEY = os.environ.get("API_KEY")
 
-    email_sender = st.secrets["EMAIL_SENDER"]
-    email_password = st.secrets["EMAIL_PASSWORD"]
+    email_sender = os.environ.get("EMAIL_SENDER")
+    email_password = os.environ.get("EMAIL_PASSWORD")
 
     google_cred = {
-  "type": st.secrets["type"],
-  "project_id": st.secrets["project_id"],
-  "private_key_id": st.secrets["private_key_id"],
-  "private_key": st.secrets["private_key"],
-  "client_email": st.secrets["client_email"],
-  "client_id": st.secrets["client_id"],
-  "auth_uri": st.secrets["auth_uri"],
-  "token_uri": st.secrets["token_uri"],
-  "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-  "client_x509_cert_url": st.secrets["client_x509_cert_url"],
-  "universe_domain": st.secrets["universe_domain"]
+    "type": os.environ.get("TYPE"),
+    "project_id": os.environ.get("PROJECT_ID"),
+    "private_key_id": os.environ.get("PRIVATE_KEY_ID"),
+    "private_key": os.environ.get("PRIVATE_KEY").replace("\\n", "\n") if os.environ.get("PRIVATE_KEY") else None,
+    "client_email": os.environ.get("CLIENT_EMAIL"),
+    "client_id": os.environ.get("CLIENT_ID"),
+    "auth_uri": os.environ.get("AUTH_URI"),
+    "token_uri": os.environ.get("TOKEN_URI"),
+    "auth_provider_x509_cert_url": os.environ.get("AUTH_PROVIDER_X509_CERT_URL"),
+    "client_x509_cert_url": os.environ.get("CLIENT_X509_CERT_URL"),
+    "universe_domain": os.environ.get("UNIVERSE_DOMAIN"),
 }
 
     st.markdown("""
@@ -302,7 +302,7 @@ if authentication_status:
         creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
-        sheet_id = st.secrets["sheet_id"]
+        sheet_id = os.environ.get("sheet_id")
         workbook = client.open_by_key(sheet_id)
         
         df_sales = pd.DataFrame(workbook.worksheet("OneUp - Invoices").get_all_records()).drop_duplicates()
@@ -418,7 +418,7 @@ if authentication_status:
 
 
     def trigger_manual_refresh():
-        token = st.secrets['GITHUB_API']              
+        token = os.environ.get('GITHUB_API')           
         owner = "haithemaoudia"
         repo = "noen_data_pipeline"
         workflow = "main.yml"                
@@ -584,7 +584,7 @@ if authentication_status:
         creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
-        sheet_id = st.secrets["sheet_id"]
+        sheet_id = os.environ.get("sheet_id")
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         
@@ -603,7 +603,7 @@ if authentication_status:
 
 
     def update_product_inventory(new_df):
-        sheet_id = st.secrets["sheet_id"]
+        sheet_id = os.environ.get("sheet_id")
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         set_with_dataframe(sheet, new_df)
@@ -1685,6 +1685,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
