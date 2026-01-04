@@ -17,6 +17,7 @@ import pickle
 from pathlib import Path
 import smtplib
 from email.message import EmailMessage
+import os
 
 
 names = ["Chems"]
@@ -1685,6 +1686,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
