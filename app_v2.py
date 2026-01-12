@@ -64,24 +64,24 @@ if authentication_status:
     )
 
         # ========== API CREDENTIALS ==========
-    API_EMAIL = os.environ.get('API_EMAIL')
-    API_KEY = os.environ.get('API_KEY')
+    API_EMAIL = os.getenv('API_EMAIL')
+    API_KEY = os.getenv('API_KEY')
 
-    email_sender = os.environ.get('EMAIL_SENDER')
-    email_password = os.environ.get('EMAIL_PASSWORD')
+    email_sender = os.getenv('EMAIL_SENDER')
+    email_password = os.getenv('EMAIL_PASSWORD')
 
     google_cred = {
-    'type': os.environ.get('TYPE'),
-    'project_id': os.environ.get('PROJECT_ID'),
-    'private_key_id': os.environ.get('PRIVATE_KEY_ID'),
-    'private_key': os.environ.get('PRIVATE_KEY').replace('\\n', '\n') if os.environ.get('PRIVATE_KEY') else None,
-    'client_email': os.environ.get('CLIENT_EMAIL'),
-    'client_id': os.environ.get('CLIENT_ID'),
-    'auth_uri': os.environ.get('AUTH_URI'),
-    'token_uri': os.environ.get('TOKEN_URI'),
-    'auth_provider_x509_cert_url': os.environ.get('AUTH_PROVIDER_X509_CERT_URL'),
-    'client_x509_cert_url': os.environ.get('CLIENT_X509_CERT_URL'),
-    'universe_domain': os.environ.get('UNIVERSE_DOMAIN'),
+    'type': os.getenv('TYPE'),
+    'project_id': os.getenv('PROJECT_ID'),
+    'private_key_id': os.getenv('PRIVATE_KEY_ID'),
+    'private_key': os.getenv('PRIVATE_KEY').replace('\\n', '\n') if os.getenv('PRIVATE_KEY') else None,
+    'client_email': os.getenv('CLIENT_EMAIL'),
+    'client_id': os.getenv('CLIENT_ID'),
+    'auth_uri': os.getenv('AUTH_URI'),
+    'token_uri': os.getenv('TOKEN_URI'),
+    'auth_provider_x509_cert_url': os.getenv('AUTH_PROVIDER_X509_CERT_URL'),
+    'client_x509_cert_url': os.getenv('CLIENT_X509_CERT_URL'),
+    'universe_domain': os.getenv('UNIVERSE_DOMAIN'),
 }
     st.markdown("""
     <style>
@@ -302,7 +302,7 @@ if authentication_status:
         creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
-        sheet_id = os.environ.get('sheet_id')
+        sheet_id = os.getenv('sheet_id')
         workbook = client.open_by_key(sheet_id)
         
         df_sales = pd.DataFrame(workbook.worksheet("OneUp - Invoices").get_all_records()).drop_duplicates()
@@ -418,7 +418,7 @@ if authentication_status:
 
 
     def trigger_manual_refresh():
-        token = os.environ.get('GITHUB_API')           
+        token = os.getenv('GITHUB_API')           
         owner = "haithemaoudia"
         repo = "noen_data_pipeline"
         workflow = "main.yml"                
@@ -584,7 +584,7 @@ if authentication_status:
         creds = Credentials.from_service_account_info(google_cred, scopes=scope)
         client = gspread.authorize(creds)
         
-        sheet_id = os.environ.get('sheet_id')
+        sheet_id = os.getenv('sheet_id')
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         
@@ -603,7 +603,7 @@ if authentication_status:
 
 
     def update_product_inventory(new_df):
-        sheet_id = os.environ.get('sheet_id')
+        sheet_id = os.getenv('sheet_id')
         workbook = client.open_by_key(sheet_id)
         sheet = workbook.worksheet("Product Inventory")
         set_with_dataframe(sheet, new_df)
@@ -1685,6 +1685,7 @@ L'équipe NOEN Seafood
                 st.warning("⚠️ Please select at least one invoice to download")
         else:
             st.info("No invoices found matching the selected filters")
+
 
 
 
